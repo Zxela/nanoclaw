@@ -71,3 +71,11 @@ export const TRIGGER_PATTERN = new RegExp(
 // Uses system timezone by default
 export const TIMEZONE =
   process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+// Allowlist of file extensions agents can send back to channels.
+// Scoped narrowly by default; extend via env var.
+export const FILE_SEND_ALLOWLIST = (
+  process.env.FILE_SEND_ALLOWLIST || '.png,.zip'
+)
+  .split(',')
+  .map((s) => s.trim().toLowerCase());
