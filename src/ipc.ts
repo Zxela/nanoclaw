@@ -3,7 +3,7 @@ import path from 'path';
 
 import { CronExpressionParser } from 'cron-parser';
 
-import { DATA_DIR, IPC_POLL_INTERVAL, TIMEZONE } from './config.js';
+import { DATA_DIR, GROUPS_DIR, FILE_SEND_ALLOWLIST, IPC_POLL_INTERVAL, TIMEZONE } from './config.js';
 import { AvailableGroup } from './container-runner.js';
 import { createTask, deleteTask, getTaskById, updateTask } from './db.js';
 import { isValidGroupFolder } from './group-folder.js';
@@ -12,6 +12,7 @@ import { RegisteredGroup } from './types.js';
 
 export interface IpcDeps {
   sendMessage: (jid: string, text: string) => Promise<void>;
+  sendFile: (jid: string, files: Array<{ path: string; name: string }>, caption?: string) => Promise<void>;
   registeredGroups: () => Record<string, RegisteredGroup>;
   registerGroup: (jid: string, group: RegisteredGroup) => void;
   syncGroups: (force: boolean) => Promise<void>;
@@ -22,6 +23,35 @@ export interface IpcDeps {
     availableGroups: AvailableGroup[],
     registeredJids: Set<string>,
   ) => void;
+}
+
+/**
+ * Resolve a container path to a host path.
+ * Container /workspace/group/ → groups/{folder}/
+ * Container /workspace/ipc/  → data/ipc/{folder}/
+ * Returns null if the path is outside allowed mounts.
+ */
+function resolveContainerPath(
+  containerPath: string,
+  groupFolder: string,
+): string | null {
+  const groupPrefix = '/workspace/group/';
+  const ipcPrefix = '/workspace/ipc/';
+
+  // Normalize and prevent path traversal
+  const normalized = path.normalize(containerPath);
+  if (normalized.includes('..')) return null;
+
+  if (normalized.startsWith(groupPrefix)) {
+    const relative = normalized.slice(groupPrefix.length);
+    return path.join(GROUPS_DIR, groupFolder, relative);
+  }
+  if (normalized.startsWith(ipcPrefix)) {
+    const relative = normalized.slice(ipcPrefix.length);
+    return path.join(DATA_DIR, 'ipc', groupFolder, relative);
+  }
+
+  return null;
 }
 
 let ipcWatcherRunning = false;
@@ -143,6 +173,113 @@ export function startIpcWatcher(deps: IpcDeps): void {
         }
       } catch (err) {
         logger.error({ err, sourceGroup }, 'Error reading IPC tasks directory');
+      }
+
+      // Process file-send requests from this group's IPC directory
+      const filesDir = path.join(ipcBaseDir, sourceGroup, 'files');
+      try {
+        if (fs.existsSync(filesDir)) {
+          const fileManifests = fs
+            .readdirSync(filesDir)
+            .filter((f) => f.endsWith('.json'));
+          for (const file of fileManifests) {
+            const filePath = path.join(filesDir, file);
+            try {
+              const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+              if (
+                data.type === 'send_files' &&
+                data.chatJid &&
+                Array.isArray(data.files) &&
+                data.files.length > 0
+              ) {
+                // Authorization: same as messages
+                const targetGroup = registeredGroups[data.chatJid];
+                if (
+                  !isMain &&
+                  (!targetGroup || targetGroup.folder !== sourceGroup)
+                ) {
+                  logger.warn(
+                    { chatJid: data.chatJid, sourceGroup },
+                    'Unauthorized file send attempt blocked',
+                  );
+                  fs.unlinkSync(filePath);
+                  continue;
+                }
+
+                // Resolve and validate each file
+                const resolvedFiles: Array<{ path: string; name: string }> = [];
+                let valid = true;
+                for (const f of data.files) {
+                  const hostPath = resolveContainerPath(f.path, sourceGroup);
+                  if (!hostPath) {
+                    logger.warn(
+                      { containerPath: f.path, sourceGroup },
+                      'File send rejected: path outside allowed mounts',
+                    );
+                    valid = false;
+                    break;
+                  }
+                  const ext = path.extname(f.name || f.path).toLowerCase();
+                  if (!FILE_SEND_ALLOWLIST.includes(ext)) {
+                    logger.warn(
+                      { ext, sourceGroup },
+                      'File send rejected: extension not in allowlist',
+                    );
+                    valid = false;
+                    break;
+                  }
+                  if (!fs.existsSync(hostPath)) {
+                    logger.warn(
+                      { hostPath, sourceGroup },
+                      'File send rejected: file not found',
+                    );
+                    valid = false;
+                    break;
+                  }
+                  const stat = fs.statSync(hostPath);
+                  if (stat.size > 25 * 1024 * 1024) {
+                    logger.warn(
+                      { hostPath, size: stat.size, sourceGroup },
+                      'File send rejected: exceeds 25MB limit',
+                    );
+                    valid = false;
+                    break;
+                  }
+                  resolvedFiles.push({ path: hostPath, name: f.name || path.basename(f.path) });
+                }
+
+                if (valid && resolvedFiles.length > 0) {
+                  await deps.sendFile(data.chatJid, resolvedFiles, data.caption);
+                  logger.info(
+                    {
+                      chatJid: data.chatJid,
+                      sourceGroup,
+                      fileCount: resolvedFiles.length,
+                    },
+                    'IPC files sent',
+                  );
+                }
+              }
+              fs.unlinkSync(filePath);
+            } catch (err) {
+              logger.error(
+                { file, sourceGroup, err },
+                'Error processing IPC file send',
+              );
+              const errorDir = path.join(ipcBaseDir, 'errors');
+              fs.mkdirSync(errorDir, { recursive: true });
+              fs.renameSync(
+                filePath,
+                path.join(errorDir, `${sourceGroup}-${file}`),
+              );
+            }
+          }
+        }
+      } catch (err) {
+        logger.error(
+          { err, sourceGroup },
+          'Error reading IPC files directory',
+        );
       }
     }
 

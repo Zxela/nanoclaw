@@ -38,6 +38,7 @@ import {
   initDatabase,
   setRegisteredGroup,
   setRouterState,
+  deleteSession,
   setSession,
   storeChatMetadata,
   storeMessage,
@@ -332,6 +333,20 @@ async function runAgent(
     }
 
     if (output.status === 'error') {
+      // If session expired/invalid, clear it and retry with a fresh session
+      if (
+        sessionId &&
+        output.error?.includes('No conversation found with session ID')
+      ) {
+        logger.warn(
+          { group: group.name },
+          'Session expired, clearing and retrying with fresh session',
+        );
+        delete sessions[group.folder];
+        deleteSession(group.folder);
+        return runAgent(group, prompt, chatJid, onOutput);
+      }
+
       logger.error(
         { group: group.name, error: output.error },
         'Container agent error',
@@ -619,6 +634,12 @@ async function main(): Promise<void> {
       const channel = findChannel(channels, jid);
       if (!channel) throw new Error(`No channel for JID: ${jid}`);
       return channel.sendMessage(jid, text);
+    },
+    sendFile: (jid, files, caption) => {
+      const channel = findChannel(channels, jid);
+      if (!channel) throw new Error(`No channel for JID: ${jid}`);
+      if (!channel.sendFile) throw new Error(`Channel ${channel.name} does not support file sending`);
+      return channel.sendFile(jid, files, caption);
     },
     registeredGroups: () => registeredGroups,
     registerGroup,
