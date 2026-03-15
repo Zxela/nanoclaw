@@ -15,7 +15,7 @@ fi
 
 # xvfb-run provides a virtual X display for OpenSCAD's renderer
 xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" \
-  openscad -o "$OUTPUT" --imgsize="$SIZE" --render "$INPUT" 2>&1
+  openscad -o "$OUTPUT" --imgsize="$SIZE" "$INPUT" 2>&1
 
 if [ -f "$OUTPUT" ]; then
   echo "Rendered: $OUTPUT"
