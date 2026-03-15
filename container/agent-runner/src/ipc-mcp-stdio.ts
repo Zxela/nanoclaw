@@ -14,6 +14,7 @@ import { CronExpressionParser } from 'cron-parser';
 const IPC_DIR = '/workspace/ipc';
 const MESSAGES_DIR = path.join(IPC_DIR, 'messages');
 const TASKS_DIR = path.join(IPC_DIR, 'tasks');
+const FILES_DIR = path.join(IPC_DIR, 'files');
 
 // Context from environment variables (set by the agent runner)
 const chatJid = process.env.NANOCLAW_CHAT_JID!;
@@ -329,6 +330,63 @@ Use available_groups.json to find the JID for a group. The folder name must be c
 
     return {
       content: [{ type: 'text' as const, text: `Group "${args.name}" registered. It will start receiving messages immediately.` }],
+    };
+  },
+);
+
+server.tool(
+  'send_files',
+  `Send files (images, archives) to the chat as attachments. Files must exist on disk before calling this tool. Allowed extensions: .png, .zip (configurable by host).
+
+Use this after generating output files (renders, archives, exports) to share them with the user.`,
+  {
+    files: z
+      .array(
+        z.object({
+          path: z.string().describe('Absolute path to the file in the container (e.g., /workspace/group/render.png)'),
+          name: z.string().describe('Filename shown to the recipient (e.g., model.png)'),
+        }),
+      )
+      .min(1)
+      .describe('Files to send'),
+    caption: z
+      .string()
+      .optional()
+      .describe('Optional text message sent alongside the files'),
+  },
+  async (args) => {
+    // Validate files exist before writing IPC
+    const missing = args.files.filter((f) => !fs.existsSync(f.path));
+    if (missing.length > 0) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Files not found: ${missing.map((f) => f.path).join(', ')}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const data = {
+      type: 'send_files',
+      chatJid,
+      files: args.files,
+      caption: args.caption,
+      groupFolder,
+      timestamp: new Date().toISOString(),
+    };
+
+    writeIpcFile(FILES_DIR, data);
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: `${args.files.length} file(s) queued for sending.`,
+        },
+      ],
     };
   },
 );
