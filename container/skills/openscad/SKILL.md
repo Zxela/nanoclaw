@@ -5,12 +5,18 @@ description: Create 3D models with OpenSCAD — write .scad files, render to PNG
 
 # 3D Modeling with OpenSCAD
 
+## IMPORTANT: File locations and sending
+
+- **Always write files to the current working directory** (NOT /tmp/)
+- **You MUST use the `mcp__nanoclaw__send_files` tool** to send files to the user — do NOT just tell them where files are
+- The `send_files` tool sends actual file attachments to the chat (images appear inline, ZIPs are downloadable)
+
 ## Workflow
 
 1. Write `.scad` file(s) in the current directory
 2. Render preview: `scad-render model.scad render.png`
 3. Package source: `zip model.zip *.scad`
-4. Send to chat: use the `send_files` MCP tool
+4. Send to chat: call `mcp__nanoclaw__send_files` with the render.png and model.zip
 
 ## Quick Example
 
@@ -44,7 +50,9 @@ scad-render coke_can.scad render.png
 zip model.zip *.scad
 ```
 
-Then call the `send_files` MCP tool with the render.png and model.zip.
+Then call `mcp__nanoclaw__send_files` with:
+- files: `[{path: "/workspace/group/render.png", name: "render.png"}, {path: "/workspace/group/model.zip", name: "model.zip"}]`
+- caption: "Here's your 3D model"
 
 ## OpenSCAD Language Reference
 
