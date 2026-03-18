@@ -638,10 +638,20 @@ export function addWatchedPr(pr: {
        chat_jid = excluded.chat_jid,
        source = excluded.source,
        status = 'active'`,
-  ).run(pr.repo, pr.pr_number, pr.group_folder, pr.chat_jid, pr.source, new Date().toISOString());
+  ).run(
+    pr.repo,
+    pr.pr_number,
+    pr.group_folder,
+    pr.chat_jid,
+    pr.source,
+    new Date().toISOString(),
+  );
 }
 
-export function getWatchedPr(repo: string, prNumber: number): WatchedPr | undefined {
+export function getWatchedPr(
+  repo: string,
+  prNumber: number,
+): WatchedPr | undefined {
   return db
     .prepare('SELECT * FROM watched_prs WHERE repo = ? AND pr_number = ?')
     .get(repo, prNumber) as WatchedPr | undefined;
@@ -649,27 +659,44 @@ export function getWatchedPr(repo: string, prNumber: number): WatchedPr | undefi
 
 export function getActiveWatchedPrs(): WatchedPr[] {
   return db
-    .prepare("SELECT * FROM watched_prs WHERE status = 'active' ORDER BY created_at")
+    .prepare(
+      "SELECT * FROM watched_prs WHERE status = 'active' ORDER BY created_at",
+    )
     .all() as WatchedPr[];
 }
 
 export function updateWatchedPr(
   repo: string,
   prNumber: number,
-  updates: Partial<Pick<WatchedPr, 'status' | 'last_checked_at' | 'last_comment_id'>>,
+  updates: Partial<
+    Pick<WatchedPr, 'status' | 'last_checked_at' | 'last_comment_id'>
+  >,
 ): void {
   const fields: string[] = [];
   const values: unknown[] = [];
-  if (updates.status !== undefined) { fields.push('status = ?'); values.push(updates.status); }
-  if (updates.last_checked_at !== undefined) { fields.push('last_checked_at = ?'); values.push(updates.last_checked_at); }
-  if (updates.last_comment_id !== undefined) { fields.push('last_comment_id = ?'); values.push(updates.last_comment_id); }
+  if (updates.status !== undefined) {
+    fields.push('status = ?');
+    values.push(updates.status);
+  }
+  if (updates.last_checked_at !== undefined) {
+    fields.push('last_checked_at = ?');
+    values.push(updates.last_checked_at);
+  }
+  if (updates.last_comment_id !== undefined) {
+    fields.push('last_comment_id = ?');
+    values.push(updates.last_comment_id);
+  }
   if (fields.length === 0) return;
   values.push(repo, prNumber);
-  db.prepare(`UPDATE watched_prs SET ${fields.join(', ')} WHERE repo = ? AND pr_number = ?`).run(...values);
+  db.prepare(
+    `UPDATE watched_prs SET ${fields.join(', ')} WHERE repo = ? AND pr_number = ?`,
+  ).run(...values);
 }
 
 export function unwatchPr(repo: string, prNumber: number): void {
-  db.prepare("UPDATE watched_prs SET status = 'unwatched' WHERE repo = ? AND pr_number = ?").run(repo, prNumber);
+  db.prepare(
+    "UPDATE watched_prs SET status = 'unwatched' WHERE repo = ? AND pr_number = ?",
+  ).run(repo, prNumber);
 }
 
 // --- Registered group accessors ---

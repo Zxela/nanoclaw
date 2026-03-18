@@ -11,7 +11,14 @@ import {
   TIMEZONE,
 } from './config.js';
 import { AvailableGroup } from './container-runner.js';
-import { addWatchedPr, createTask, deleteTask, getTaskById, unwatchPr, updateTask } from './db.js';
+import {
+  addWatchedPr,
+  createTask,
+  deleteTask,
+  getTaskById,
+  unwatchPr,
+  updateTask,
+} from './db.js';
 import { isValidGroupFolder } from './group-folder.js';
 import { logger } from './logger.js';
 import { RegisteredGroup } from './types.js';
@@ -353,7 +360,11 @@ export function startIpcWatcher(deps: IpcDeps): void {
                     'Cannot watch PR: group not registered',
                   );
                 }
-              } else if (data.type === 'unwatch_pr' && data.repo && data.pr_number) {
+              } else if (
+                data.type === 'unwatch_pr' &&
+                data.repo &&
+                data.pr_number
+              ) {
                 unwatchPr(data.repo, data.pr_number);
                 logger.info(
                   { repo: data.repo, pr: data.pr_number, sourceGroup },

@@ -35,9 +35,7 @@ export interface PrComment {
 export function parsePrUrl(
   url: string,
 ): { repo: string; pr_number: number } | null {
-  const match = url.match(
-    /github\.com\/([^/]+\/[^/]+)\/pull\/(\d+)/,
-  );
+  const match = url.match(/github\.com\/([^/]+\/[^/]+)\/pull\/(\d+)/);
   if (!match) return null;
   return { repo: match[1], pr_number: parseInt(match[2], 10) };
 }
@@ -114,9 +112,10 @@ export function startPrWatcher(deps: PrWatcherDeps): void {
       for (const pr of watchedPrs) {
         try {
           // Check PR state
-          const prData = ghApi(
-            `repos/${pr.repo}/pulls/${pr.pr_number}`,
-          ) as { state?: string; head?: { ref?: string } } | null;
+          const prData = ghApi(`repos/${pr.repo}/pulls/${pr.pr_number}`) as {
+            state?: string;
+            head?: { ref?: string };
+          } | null;
 
           if (!prData) continue;
 
@@ -232,7 +231,12 @@ export function startPrWatcher(deps: PrWatcherDeps): void {
                   assistantName: 'Jarvis',
                 },
                 (proc, containerName) =>
-                  deps.onProcess(pr.chat_jid, proc, containerName, pr.group_folder),
+                  deps.onProcess(
+                    pr.chat_jid,
+                    proc,
+                    containerName,
+                    pr.group_folder,
+                  ),
                 async (streamedOutput: ContainerOutput) => {
                   if (streamedOutput.result) {
                     await deps.sendMessage(pr.chat_jid, streamedOutput.result);
@@ -256,7 +260,11 @@ export function startPrWatcher(deps: PrWatcherDeps): void {
           });
 
           logger.info(
-            { repo: pr.repo, pr: pr.pr_number, newComments: newComments.length },
+            {
+              repo: pr.repo,
+              pr: pr.pr_number,
+              newComments: newComments.length,
+            },
             'Enqueued PR feedback processing',
           );
         } catch (err) {

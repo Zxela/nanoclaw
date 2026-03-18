@@ -219,7 +219,7 @@
       "source": "local",
       "description": "Review GitHub PRs using structured code review methodology. Trigger when asked to review a PR or given a PR URL to review.",
       "categories": [
-        "coding"
+        "general"
       ],
       "path": "/skills-catalog/local/pr-review"
     },

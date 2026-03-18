@@ -14,7 +14,9 @@ describe('parsePrUrl', () => {
   });
 
   it('handles trailing slashes and fragments', () => {
-    const result = parsePrUrl('https://github.com/owner/repo/pull/42/files#diff');
+    const result = parsePrUrl(
+      'https://github.com/owner/repo/pull/42/files#diff',
+    );
     expect(result).toEqual({ repo: 'owner/repo', pr_number: 42 });
   });
 });
@@ -27,7 +29,13 @@ describe('buildPrFeedbackPrompt', () => {
       branch: 'feature-x',
       url: 'https://github.com/owner/repo/pull/42',
       comments: [
-        { id: 123, file: 'src/foo.ts', line: 10, author: 'reviewer', body: 'Fix this' },
+        {
+          id: 123,
+          file: 'src/foo.ts',
+          line: 10,
+          author: 'reviewer',
+          body: 'Fix this',
+        },
       ],
       timezone: 'UTC',
     });
