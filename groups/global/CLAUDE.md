@@ -68,13 +68,6 @@ Formatting rules differ by platform. Check which platform you're on and follow t
 - Lists: `- item` renders fine
 - No • bullet character needed
 
-### WhatsApp / Telegram
-- *Bold*: `*single asterisks*` (NEVER **double asterisks**)
-- _Italic_: `_underscores_`
-- • Bullet points (literal • character)
-- ` ```triple backticks``` ` for code
-- No headings, no `[links](url)`, no tables
-
 ## Skills Catalog
 
 You have a catalog of available skills at `/skills-catalog/catalog.json`.
