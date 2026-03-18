@@ -2,6 +2,7 @@
   "defaults": ["general"],
   "overrides": {
     "agent-browser": ["coding", "general"],
+    "image-gen": ["general", "creative"],
     "openscad": ["coding", "engineering"],
     "brainstorming": ["coding", "creative"],
     "dispatching-parallel-agents": ["coding", "general"],
