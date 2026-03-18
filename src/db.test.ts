@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, test, expect, beforeEach } from 'vitest';
 
 import {
   _initTestDatabase,
@@ -8,6 +8,7 @@ import {
   getAllRegisteredGroups,
   getMessagesSince,
   getNewMessages,
+  getRegisteredGroup,
   getTaskById,
   setRegisteredGroup,
   storeChatMetadata,
@@ -446,6 +447,45 @@ describe('message query LIMIT', () => {
       50,
     );
     expect(messages).toHaveLength(10);
+  });
+});
+
+// --- RegisteredGroup skills ---
+
+describe('registered group skills', () => {
+  test('defaults to ["general"] when skills not set', () => {
+    setRegisteredGroup('test@g.us', {
+      name: 'Test',
+      folder: 'whatsapp_test',
+      trigger: '@bot',
+      added_at: new Date().toISOString(),
+    });
+    const group = getRegisteredGroup('test@g.us');
+    expect(group?.skills).toEqual(['general']);
+  });
+
+  test('stores and retrieves custom skills', () => {
+    setRegisteredGroup('coding@g.us', {
+      name: 'Coding',
+      folder: 'whatsapp_coding',
+      trigger: '@bot',
+      added_at: new Date().toISOString(),
+      skills: ['coding', 'general'],
+    });
+    const group = getRegisteredGroup('coding@g.us');
+    expect(group?.skills).toEqual(['coding', 'general']);
+  });
+
+  test('getAllRegisteredGroups returns skills', () => {
+    setRegisteredGroup('a@g.us', {
+      name: 'A',
+      folder: 'whatsapp_group-a',
+      trigger: '@bot',
+      added_at: new Date().toISOString(),
+      skills: ['coding'],
+    });
+    const all = getAllRegisteredGroups();
+    expect(all['a@g.us'].skills).toEqual(['coding']);
   });
 });
 

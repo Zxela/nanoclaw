@@ -73,6 +73,10 @@ function createSchema(database: Database.Database): void {
       group_folder TEXT PRIMARY KEY,
       session_id TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS active_threads (
+      chat_jid TEXT PRIMARY KEY,
+      thread_id TEXT NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS registered_groups (
       jid TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -114,6 +118,15 @@ function createSchema(database: Database.Database): void {
     // Backfill: existing rows with folder = 'main' are the main group
     database.exec(
       `UPDATE registered_groups SET is_main = 1 WHERE folder = 'main'`,
+    );
+  } catch {
+    /* column already exists */
+  }
+
+  // Add skills column if it doesn't exist (migration for existing DBs)
+  try {
+    database.exec(
+      `ALTER TABLE registered_groups ADD COLUMN skills TEXT DEFAULT '["general"]'`,
     );
   } catch {
     /* column already exists */
@@ -526,6 +539,10 @@ export function setSession(groupFolder: string, sessionId: string): void {
   ).run(groupFolder, sessionId);
 }
 
+export function deleteSession(groupFolder: string): void {
+  db.prepare('DELETE FROM sessions WHERE group_folder = ?').run(groupFolder);
+}
+
 export function getAllSessions(): Record<string, string> {
   const rows = db
     .prepare('SELECT group_folder, session_id FROM sessions')
@@ -533,6 +550,36 @@ export function getAllSessions(): Record<string, string> {
   const result: Record<string, string> = {};
   for (const row of rows) {
     result[row.group_folder] = row.session_id;
+  }
+  return result;
+}
+
+// --- Active thread accessors (Discord thread tracking) ---
+
+export function getActiveThread(chatJid: string): string | undefined {
+  const row = db
+    .prepare('SELECT thread_id FROM active_threads WHERE chat_jid = ?')
+    .get(chatJid) as { thread_id: string } | undefined;
+  return row?.thread_id;
+}
+
+export function setActiveThread(chatJid: string, threadId: string): void {
+  db.prepare(
+    'INSERT OR REPLACE INTO active_threads (chat_jid, thread_id) VALUES (?, ?)',
+  ).run(chatJid, threadId);
+}
+
+export function deleteActiveThread(chatJid: string): void {
+  db.prepare('DELETE FROM active_threads WHERE chat_jid = ?').run(chatJid);
+}
+
+export function getAllActiveThreads(): Map<string, string> {
+  const rows = db
+    .prepare('SELECT chat_jid, thread_id FROM active_threads')
+    .all() as Array<{ chat_jid: string; thread_id: string }>;
+  const result = new Map<string, string>();
+  for (const row of rows) {
+    result.set(row.chat_jid, row.thread_id);
   }
   return result;
 }
@@ -554,6 +601,7 @@ export function getRegisteredGroup(
         container_config: string | null;
         requires_trigger: number | null;
         is_main: number | null;
+        skills: string | null;
       }
     | undefined;
   if (!row) return undefined;
@@ -576,6 +624,7 @@ export function getRegisteredGroup(
     requiresTrigger:
       row.requires_trigger === null ? undefined : row.requires_trigger === 1,
     isMain: row.is_main === 1 ? true : undefined,
+    skills: row.skills ? JSON.parse(row.skills) : ['general'],
   };
 }
 
@@ -584,8 +633,8 @@ export function setRegisteredGroup(jid: string, group: RegisteredGroup): void {
     throw new Error(`Invalid group folder "${group.folder}" for JID ${jid}`);
   }
   db.prepare(
-    `INSERT OR REPLACE INTO registered_groups (jid, name, folder, trigger_pattern, added_at, container_config, requires_trigger, is_main)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO registered_groups (jid, name, folder, trigger_pattern, added_at, container_config, requires_trigger, is_main, skills)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     jid,
     group.name,
@@ -595,6 +644,7 @@ export function setRegisteredGroup(jid: string, group: RegisteredGroup): void {
     group.containerConfig ? JSON.stringify(group.containerConfig) : null,
     group.requiresTrigger === undefined ? 1 : group.requiresTrigger ? 1 : 0,
     group.isMain ? 1 : 0,
+    group.skills ? JSON.stringify(group.skills) : '["general"]',
   );
 }
 
@@ -608,6 +658,7 @@ export function getAllRegisteredGroups(): Record<string, RegisteredGroup> {
     container_config: string | null;
     requires_trigger: number | null;
     is_main: number | null;
+    skills: string | null;
   }>;
   const result: Record<string, RegisteredGroup> = {};
   for (const row of rows) {
@@ -629,6 +680,7 @@ export function getAllRegisteredGroups(): Record<string, RegisteredGroup> {
       requiresTrigger:
         row.requires_trigger === null ? undefined : row.requires_trigger === 1,
       isMain: row.is_main === 1 ? true : undefined,
+      skills: row.skills ? JSON.parse(row.skills) : ['general'],
     };
   }
   return result;

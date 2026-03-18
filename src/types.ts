@@ -40,6 +40,7 @@ export interface RegisteredGroup {
   containerConfig?: ContainerConfig;
   requiresTrigger?: boolean; // Default: true for groups, false for solo chats
   isMain?: boolean; // True for the main control group (no trigger, elevated privileges)
+  skills?: string[]; // Category tags for skill pre-loading. Default: ["general"]
 }
 
 export interface NewMessage {
@@ -78,8 +79,8 @@ export interface TaskRunLog {
 }
 
 export interface FileAttachment {
-  path: string;  // Host filesystem path
-  name: string;  // Display filename
+  path: string; // Host filesystem path
+  name: string; // Display filename
 }
 
 // --- Channel abstraction ---
@@ -96,7 +97,11 @@ export interface Channel {
   // Optional: sync group/chat names from the platform.
   syncGroups?(force: boolean): Promise<void>;
   // Optional: send file attachments. Channels that support it implement it.
-  sendFile?(jid: string, files: FileAttachment[], caption?: string): Promise<void>;
+  sendFile?(
+    jid: string,
+    files: FileAttachment[],
+    caption?: string,
+  ): Promise<void>;
 }
 
 // Callback type that channels use to deliver inbound messages
