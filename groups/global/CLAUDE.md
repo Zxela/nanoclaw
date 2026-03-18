@@ -19,6 +19,29 @@ Your output is sent to the user or group.
 
 You also have `mcp__nanoclaw__send_message` which sends a message immediately while you're still working. This is useful when you want to acknowledge a request before starting longer work.
 
+### Discord Formatting Rules
+
+Discord does **not** render markdown tables — pipe-separated tables appear as raw text with `|` characters and look broken. **Never use markdown tables in responses.**
+
+Instead use:
+- **Bullet lists** for comparisons and multi-item summaries
+- **Bold labels** (`*label*` or `**label**`) for key-value pairs
+- **Code blocks** (` ``` `) for structured data that needs alignment
+- **Numbered lists** for sequential steps
+
+Good ✅:
+```
+• **Double-deploy** — fixed by capturing output in Step 5
+• **Deprecated flag** — replaced with vercel.json injection
+```
+
+Bad ❌:
+```
+| Issue | Fix |
+|---|---|
+| Double-deploy | capture output |
+```
+
 ### Internal thoughts
 
 If part of your output is internal reasoning rather than something for the user, wrap it in `<internal>` tags:
