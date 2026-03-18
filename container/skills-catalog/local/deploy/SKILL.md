@@ -65,11 +65,11 @@ PROJECT_DIR="${1:-.}"  # Default to current directory
 detect_project_type() {
   local dir="$1"
 
-  if ls "$dir"/next.config.* 2>/dev/null | grep -q .; then
+  if compgen -G "$dir/next.config.*" > /dev/null 2>&1; then
     echo "nextjs"
-  elif ls "$dir"/astro.config.* 2>/dev/null | grep -q .; then
+  elif compgen -G "$dir/astro.config.*" > /dev/null 2>&1; then
     echo "astro"
-  elif ls "$dir"/vite.config.* 2>/dev/null | grep -q .; then
+  elif compgen -G "$dir/vite.config.*" > /dev/null 2>&1; then
     echo "vite"
   elif [ -f "$dir/package.json" ] && grep -q '"build"' "$dir/package.json"; then
     echo "node"
@@ -108,7 +108,7 @@ if [ ! -f vercel.json ]; then
   cat > vercel.json <<'EOF'
 {
   "version": 2,
-  "builds": [{"src": "index.html", "use": "@vercel/static"}]
+  "builds": [{"src": "**", "use": "@vercel/static"}]
 }
 EOF
 fi
@@ -146,13 +146,23 @@ vercel dist/ --prod --token=$VERCEL_TOKEN --yes
 
 ### First-Time Projects (no `.vercel/` directory)
 
-When deploying a project for the first time, add `--name` to set a project name:
+Set the project name in `vercel.json` — the `--name` flag was removed in Vercel CLI v28:
 
 ```bash
-# Project name: lowercase, alphanumeric + hyphens only
-PROJECT_NAME="my-app-name"
+PROJECT_NAME="my-app-name"  # lowercase, alphanumeric + hyphens only
 
-vercel --prod --token=$VERCEL_TOKEN --yes --name=$PROJECT_NAME
+if [ ! -f vercel.json ]; then
+  echo "{\"name\": \"$PROJECT_NAME\"}" > vercel.json
+else
+  python3 -c "
+import json
+with open('vercel.json') as f: d = json.load(f)
+d['name'] = '$PROJECT_NAME'
+with open('vercel.json', 'w') as f: json.dump(d, f, indent=2)
+"
+fi
+
+vercel --prod --token=$VERCEL_TOKEN --yes
 ```
 
 ### Re-deploying an Existing Project
@@ -204,33 +214,30 @@ netlify deploy --prod --dir=.next/ --auth=$NETLIFY_AUTH_TOKEN
 
 ## 6. Post-Deployment: Extract and Return URL
 
-After a successful deploy, capture and send the deployment URL back to chat.
+**IMPORTANT:** Capture the deploy output in the same command that runs the deployment — do NOT run vercel/netlify a second time here. That would trigger a duplicate deployment.
 
 ### Vercel
 
 ```bash
-DEPLOY_OUTPUT=$(vercel --prod --token=$VERCEL_TOKEN --yes 2>&1)
+# Capture output from the single deploy command above
 DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | grep -oE 'https://[a-zA-Z0-9._-]+\.vercel\.app' | tail -1)
 
 if [ -n "$DEPLOY_URL" ]; then
   echo "Deployment successful: $DEPLOY_URL"
 else
-  echo "Deployment may have succeeded. Full output:"
-  echo "$DEPLOY_OUTPUT"
+  echo "Deployment may have succeeded. Check full output above."
 fi
 ```
 
 ### Netlify
 
 ```bash
-DEPLOY_OUTPUT=$(netlify deploy --prod --dir=dist/ --auth=$NETLIFY_AUTH_TOKEN 2>&1)
 DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | grep -oE 'https://[a-zA-Z0-9._-]+\.netlify\.app' | tail -1)
 
 if [ -n "$DEPLOY_URL" ]; then
   echo "Deployment successful: $DEPLOY_URL"
 else
-  echo "Deployment may have succeeded. Full output:"
-  echo "$DEPLOY_OUTPUT"
+  echo "Deployment may have succeeded. Check full output above."
 fi
 ```
 
