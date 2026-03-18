@@ -1,9 +1,9 @@
 ---
 name: image-gen
-description: Generate images from text prompts using Google Gemini Imagen. Use when asked to create, draw, generate, illustrate, or visualize an image. Requires GEMINI_API_KEY environment variable.
+description: Generate images from text prompts using Google Gemini AI. Use when asked to create, draw, generate, illustrate, or visualize an image. Requires GEMINI_API_KEY environment variable.
 ---
 
-# Image Generation with Gemini Imagen 3
+# Image Generation with Gemini
 
 ## Prerequisites
 
@@ -19,18 +19,21 @@ fi
 ## Workflow
 
 1. Check that `GEMINI_API_KEY` is set (fail clearly if not)
-2. Call the Gemini Imagen 3 API with the user's prompt
+2. Call the Gemini API with the user's prompt
 3. Extract the base64 image data and decode to PNG
 4. Save to `/home/node/work/generated_image.png`
 5. Send to chat using `mcp__nanoclaw__send_files`
 
 ## Step 1: Call the API
 
+Use `gemini-2.5-flash-image` (free tier supported):
+
 ```bash
+PROMPT="YOUR_PROMPT"
 curl -s -X POST \
-  "https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${GEMINI_API_KEY}" \
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}" \
   -H "Content-Type: application/json" \
-  -d "{\"instances\":[{\"prompt\":\"YOUR_PROMPT\"}],\"parameters\":{\"sampleCount\":1}}" \
+  -d "{\"contents\":[{\"parts\":[{\"text\":\"Generate an image of: ${PROMPT}\"}]}],\"generationConfig\":{\"responseModalities\":[\"TEXT\",\"IMAGE\"]}}" \
   > /tmp/img_response.json
 ```
 
@@ -47,10 +50,21 @@ python3 -c "
 import json, base64
 with open('/tmp/img_response.json') as f:
     r = json.load(f)
-img_data = r['predictions'][0]['bytesBase64Encoded']
-with open('/home/node/work/generated_image.png', 'wb') as out:
-    out.write(base64.b64decode(img_data))
-print('Image saved')
+if 'error' in r:
+    print('API Error:', r['error'].get('message', r['error']))
+    exit(1)
+parts = r.get('candidates', [{}])[0].get('content', {}).get('parts', [])
+for part in parts:
+    if 'inlineData' in part:
+        img_data = part['inlineData']['data']
+        with open('/home/node/work/generated_image.png', 'wb') as out:
+            out.write(base64.b64decode(img_data))
+        print('Image saved')
+        break
+else:
+    print('No image in response. Full response:')
+    print(json.dumps(r, indent=2))
+    exit(1)
 "
 ```
 
@@ -65,26 +79,9 @@ mcp__nanoclaw__send_files(
 
 ## Error Handling
 
-If the API returns an error (safety filter, quota exceeded, invalid key, etc.), the JSON response will contain an `error` field instead of `predictions`. Check for this:
-
-```python
-python3 -c "
-import json
-with open('/tmp/img_response.json') as f:
-    r = json.load(f)
-if 'error' in r:
-    print('API Error:', r['error'].get('message', r['error']))
-elif 'predictions' not in r or not r['predictions']:
-    print('No predictions returned. Full response:')
-    print(json.dumps(r, indent=2))
-else:
-    print('Success: predictions found')
-"
-```
-
 Common errors:
-- **403 / API key invalid**: `GEMINI_API_KEY` is wrong or not enabled for Imagen
-- **429 / quota exceeded**: Free tier limit reached
+- **403 / API key invalid**: `GEMINI_API_KEY` is wrong or not enabled
+- **429 / quota exceeded**: Free tier limit reached — wait and retry
 - **Safety filter blocked**: The prompt was flagged; rephrase and try again
 
 ## Writing Good Prompts
@@ -95,10 +92,6 @@ Better prompts produce better images. Be as descriptive as possible:
 - **Include style**: Photo-realistic, digital painting, oil painting, watercolor, anime, sketch, 3D render
 - **Include lighting**: Golden hour, studio lighting, dramatic shadows, soft diffused light
 - **Include mood/atmosphere**: Serene, epic, mysterious, warm and cozy, dystopian
-- **Include composition hints**: Close-up portrait, wide establishing shot, bird's-eye view, macro photography
-
-**Example prompt:**
-> "A majestic red fox sitting in a misty autumn forest at dawn, soft golden light filtering through the trees, photorealistic, 8K, cinematic"
 
 **Weak prompt:** "a dog"
 **Strong prompt:** "A golden retriever puppy playing in a sunlit meadow full of wildflowers, shallow depth of field, warm afternoon light, photorealistic photography"

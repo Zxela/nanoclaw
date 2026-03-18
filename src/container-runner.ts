@@ -331,6 +331,12 @@ function buildContainerArgs(
     args.push('-e', `GIT_COMMITTER_EMAIL=${ghSecrets.GIT_AUTHOR_EMAIL}`);
   }
 
+  // Inject Gemini API key if configured (for image generation skills)
+  const geminiSecrets = readEnvFile(['GEMINI_API_KEY']);
+  if (geminiSecrets.GEMINI_API_KEY) {
+    args.push('-e', `GEMINI_API_KEY=${geminiSecrets.GEMINI_API_KEY}`);
+  }
+
   // Runtime-specific args for host gateway resolution
   args.push(...hostGatewayArgs());
 

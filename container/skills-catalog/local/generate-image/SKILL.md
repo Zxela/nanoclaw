@@ -31,7 +31,7 @@ fi
 4. Save to /home/node/work/generated_image.png
 5. Send to chat via `mcp__nanoclaw__send_files`
 
-## API Call (gemini-2.0-flash-preview-image-generation)
+## API Call (gemini-2.5-flash-image)
 
 ```bash
 PROMPT="a red fox sitting in a snowy forest"
@@ -39,7 +39,7 @@ OUTPUT_FILE="/home/node/work/generated_image.png"
 
 # Make the API request and save full response
 RESPONSE=$(curl -s -X POST \
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${GEMINI_API_KEY}" \
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}" \
   -H "Content-Type: application/json" \
   -d "{
     \"contents\": [{
@@ -84,7 +84,7 @@ PROMPT="a red fox sitting in a snowy forest"
 OUTPUT_FILE="/home/node/work/generated_image.png"
 
 RESPONSE=$(curl -s -X POST \
-  "https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${GEMINI_API_KEY}" \
+  "https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${GEMINI_API_KEY}" \
   -H "Content-Type: application/json" \
   -d "{
     \"instances\": [{
@@ -130,9 +130,9 @@ OUTPUT_FILE="/home/node/work/generated_image.png"
 
 echo "Generating image for prompt: $PROMPT"
 
-# Try gemini-2.0-flash-preview-image-generation first
+# Try gemini-2.5-flash-image first
 RESPONSE=$(curl -s -X POST \
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${GEMINI_API_KEY}" \
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}" \
   -H "Content-Type: application/json" \
   -d "{
     \"contents\": [{
@@ -157,7 +157,7 @@ for part in parts:
 if [ -z "$IMAGE_B64" ]; then
   echo "Trying Imagen 3 fallback..."
   RESPONSE=$(curl -s -X POST \
-    "https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${GEMINI_API_KEY}" \
+    "https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${GEMINI_API_KEY}" \
     -H "Content-Type: application/json" \
     -d "{
       \"instances\": [{\"prompt\": \"${PROMPT}\"}],
