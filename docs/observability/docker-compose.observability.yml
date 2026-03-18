@@ -1,0 +1,76 @@
+# NanoClaw Observability Stack
+#
+# Runs Prometheus + Grafana alongside the NanoClaw agent platform.
+# Prometheus scrapes the metrics endpoint exposed by the agent runner.
+#
+# Usage (from the repo root):
+#   docker compose -f docker-compose.yml -f docs/observability/docker-compose.observability.yml up -d
+#
+# The agent runner must have METRICS_PORT=9090 set (the default) and the
+# metrics server started via startMetricsServer() from metrics.ts.
+
+version: '3.9'
+
+services:
+  # --------------------------------------------------------------------------
+  # Prometheus
+  # --------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.51.2
+    container_name: nanoclaw-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - nanoclaw
+
+  # --------------------------------------------------------------------------
+  # Grafana
+  # --------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: nanoclaw-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-nanoclaw}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - nanoclaw
+
+  # --------------------------------------------------------------------------
+  # Agent runner — extends the base service with metrics port + env var
+  # --------------------------------------------------------------------------
+  agent-runner:
+    environment:
+      - METRICS_PORT=9090
+    ports:
+      - "9091:9090"   # host:container (avoids conflict with prometheus above)
+    networks:
+      - nanoclaw
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  nanoclaw:
+    external: true   # assumed to be created by the base docker-compose.yml
