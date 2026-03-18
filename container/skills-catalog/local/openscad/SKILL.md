@@ -1,6 +1,6 @@
 ---
 name: openscad
-description: Create 3D models with OpenSCAD — write .scad files, render to PNG preview, and send results back to chat. Use when asked to model, design, create, or visualize 3D objects, parts, or shapes.
+description: Create 3D models with OpenSCAD — write .scad files, render to PNG preview, and send results back to chat. Use ONLY when the user explicitly requests a 3D model, 3D print, CAD design, or OpenSCAD file. Do NOT invoke proactively, speculatively, or as a bonus addition to another task.
 ---
 
 # 3D Modeling with OpenSCAD
