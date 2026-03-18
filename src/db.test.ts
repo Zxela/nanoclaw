@@ -458,7 +458,7 @@ describe('message query LIMIT', () => {
 // --- RegisteredGroup skills ---
 
 describe('registered group skills', () => {
-  test('defaults to ["general"] when skills not set', () => {
+  test('defaults to ["general", "coding"] when skills not set', () => {
     setRegisteredGroup('test@g.us', {
       name: 'Test',
       folder: 'whatsapp_test',
@@ -466,7 +466,7 @@ describe('registered group skills', () => {
       added_at: new Date().toISOString(),
     });
     const group = getRegisteredGroup('test@g.us');
-    expect(group?.skills).toEqual(['general']);
+    expect(group?.skills).toEqual(['general', 'coding']);
   });
 
   test('stores and retrieves custom skills', () => {
@@ -548,8 +548,20 @@ describe('watched_prs', () => {
   });
 
   it('returns active watched PRs only', () => {
-    addWatchedPr({ repo: 'a/b', pr_number: 1, group_folder: 'main', chat_jid: 'jid@test', source: 'auto' });
-    addWatchedPr({ repo: 'c/d', pr_number: 2, group_folder: 'main', chat_jid: 'jid@test', source: 'manual' });
+    addWatchedPr({
+      repo: 'a/b',
+      pr_number: 1,
+      group_folder: 'main',
+      chat_jid: 'jid@test',
+      source: 'auto',
+    });
+    addWatchedPr({
+      repo: 'c/d',
+      pr_number: 2,
+      group_folder: 'main',
+      chat_jid: 'jid@test',
+      source: 'manual',
+    });
     updateWatchedPr('c/d', 2, { status: 'merged' });
     const active = getActiveWatchedPrs();
     expect(active).toHaveLength(1);
@@ -557,23 +569,50 @@ describe('watched_prs', () => {
   });
 
   it('updates last_comment_id and last_checked_at', () => {
-    addWatchedPr({ repo: 'a/b', pr_number: 1, group_folder: 'main', chat_jid: 'jid@test', source: 'auto' });
-    updateWatchedPr('a/b', 1, { last_comment_id: 12345, last_checked_at: '2026-01-01T00:00:00Z' });
+    addWatchedPr({
+      repo: 'a/b',
+      pr_number: 1,
+      group_folder: 'main',
+      chat_jid: 'jid@test',
+      source: 'auto',
+    });
+    updateWatchedPr('a/b', 1, {
+      last_comment_id: 12345,
+      last_checked_at: '2026-01-01T00:00:00Z',
+    });
     const pr = getWatchedPr('a/b', 1);
     expect(pr!.last_comment_id).toBe(12345);
     expect(pr!.last_checked_at).toBe('2026-01-01T00:00:00Z');
   });
 
   it('unwatches a PR', () => {
-    addWatchedPr({ repo: 'a/b', pr_number: 1, group_folder: 'main', chat_jid: 'jid@test', source: 'auto' });
+    addWatchedPr({
+      repo: 'a/b',
+      pr_number: 1,
+      group_folder: 'main',
+      chat_jid: 'jid@test',
+      source: 'auto',
+    });
     unwatchPr('a/b', 1);
     const pr = getWatchedPr('a/b', 1);
     expect(pr!.status).toBe('unwatched');
   });
 
   it('enforces unique repo+pr_number', () => {
-    addWatchedPr({ repo: 'a/b', pr_number: 1, group_folder: 'main', chat_jid: 'jid@test', source: 'auto' });
-    addWatchedPr({ repo: 'a/b', pr_number: 1, group_folder: 'other', chat_jid: 'jid2@test', source: 'manual' });
+    addWatchedPr({
+      repo: 'a/b',
+      pr_number: 1,
+      group_folder: 'main',
+      chat_jid: 'jid@test',
+      source: 'auto',
+    });
+    addWatchedPr({
+      repo: 'a/b',
+      pr_number: 1,
+      group_folder: 'other',
+      chat_jid: 'jid2@test',
+      source: 'manual',
+    });
     const pr = getWatchedPr('a/b', 1);
     expect(pr!.group_folder).toBe('other');
   });
