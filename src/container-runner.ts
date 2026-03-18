@@ -38,6 +38,12 @@ export function copySkillsForGroup(
   skillsDst: string,
   groupSkills: string[],
 ): void {
+  // Clear stale skills from prior runs (category changes, removed plugins)
+  if (fs.existsSync(skillsDst)) {
+    fs.rmSync(skillsDst, { recursive: true });
+  }
+  fs.mkdirSync(skillsDst, { recursive: true });
+
   const catalogFile = path.join(catalogDir, 'catalog.json');
   if (!fs.existsSync(catalogFile)) {
     // Fallback: no catalog, copy all local skills (backwards compat)

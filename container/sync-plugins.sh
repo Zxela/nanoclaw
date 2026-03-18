@@ -23,7 +23,7 @@ fi
 # Parse installed_plugins.json to get active install paths
 # Format: { "plugins": { "name@marketplace": [{ "installPath": "..." }] } }
 INSTALL_PATHS=$(node -e "
-  const data = require('$INSTALLED_FILE');
+  const data = require(process.argv[1]);
   const plugins = data.plugins || {};
   for (const [key, entries] of Object.entries(plugins)) {
     if (!Array.isArray(entries) || entries.length === 0) continue;
@@ -35,7 +35,7 @@ INSTALL_PATHS=$(node -e "
       console.log(name + '\t' + entry.installPath);
     }
   }
-")
+" "$INSTALLED_FILE")
 
 if [ -z "$INSTALL_PATHS" ]; then
   echo "No plugins found in installed_plugins.json"
