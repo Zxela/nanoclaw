@@ -2,6 +2,20 @@
   "defaults": ["general"],
   "overrides": {
     "agent-browser": ["coding", "general"],
-    "openscad": ["coding", "engineering"]
+    "openscad": ["coding", "engineering"],
+    "brainstorming": ["coding", "creative"],
+    "dispatching-parallel-agents": ["coding", "general"],
+    "executing-plans": ["coding"],
+    "finishing-a-development-branch": ["coding"],
+    "receiving-code-review": ["coding"],
+    "requesting-code-review": ["coding"],
+    "subagent-driven-development": ["coding"],
+    "systematic-debugging": ["coding"],
+    "test-driven-development": ["coding"],
+    "using-git-worktrees": ["coding"],
+    "using-superpowers": ["coding", "general"],
+    "verification-before-completion": ["coding"],
+    "writing-plans": ["coding"],
+    "writing-skills": ["coding"]
   }
 }
