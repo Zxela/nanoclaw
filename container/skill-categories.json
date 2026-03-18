@@ -17,6 +17,7 @@
     "using-superpowers": ["coding", "general"],
     "verification-before-completion": ["coding"],
     "writing-plans": ["coding"],
-    "writing-skills": ["coding"]
+    "writing-skills": ["coding"],
+    "github-ops": ["coding", "general"]
   }
 }
