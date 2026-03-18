@@ -4,6 +4,7 @@ import path from 'path';
 import {
   ASSISTANT_NAME,
   CREDENTIAL_PROXY_PORT,
+  DATA_DIR,
   IDLE_TIMEOUT,
   POLL_INTERVAL,
   TIMEZONE,
@@ -494,7 +495,43 @@ function ensureContainerSystemRunning(): void {
   cleanupOrphans();
 }
 
+function acquirePidLock(): void {
+  const pidFile = path.join(DATA_DIR, 'nanoclaw.pid');
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+
+  // Check if an existing process is still running
+  if (fs.existsSync(pidFile)) {
+    const oldPid = parseInt(fs.readFileSync(pidFile, 'utf-8').trim(), 10);
+    if (oldPid && oldPid !== process.pid) {
+      try {
+        process.kill(oldPid, 0); // Check if process exists
+        // Old process is still alive — kill it
+        logger.warn({ oldPid }, 'Killing previous NanoClaw process to prevent double responses');
+        try {
+          process.kill(oldPid, 'SIGTERM');
+        } catch {
+          // Already gone
+        }
+      } catch {
+        // Process doesn't exist, stale pidfile
+      }
+    }
+  }
+
+  fs.writeFileSync(pidFile, String(process.pid));
+
+  // Clean up pidfile on exit
+  const removePid = () => {
+    try {
+      const current = fs.readFileSync(pidFile, 'utf-8').trim();
+      if (current === String(process.pid)) fs.unlinkSync(pidFile);
+    } catch { /* ignore */ }
+  };
+  process.on('exit', removePid);
+}
+
 async function main(): Promise<void> {
+  acquirePidLock();
   ensureContainerSystemRunning();
   initDatabase();
   logger.info('Database initialized');
