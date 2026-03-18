@@ -231,7 +231,7 @@ function buildVolumeMounts(
   const groupIpcDir = resolveGroupIpcPath(group.folder);
   // Container runs as node (uid 1000) and needs write access to IPC subdirs.
   // Use 0o770 (not 0o777) so other local users cannot inject/read IPC files.
-  for (const sub of ['messages', 'tasks', 'input', 'files']) {
+  for (const sub of ['messages', 'tasks', 'input', 'files', 'prs']) {
     const dir = path.join(groupIpcDir, sub);
     fs.mkdirSync(dir, { recursive: true });
     try {
