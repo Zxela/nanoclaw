@@ -383,6 +383,9 @@ export async function runContainerAgent(
     let stdoutTruncated = false;
     let stderrTruncated = false;
 
+    container.stdin.on('error', (err) => {
+      logger.warn({ group: group.name, err }, 'Container stdin write error');
+    });
     container.stdin.write(JSON.stringify(input));
     container.stdin.end();
 
@@ -432,7 +435,14 @@ export async function runContainerAgent(
             resetTimeout();
             // Call onOutput for all markers (including null results)
             // so idle timers start even for "silent" query completions.
-            outputChain = outputChain.then(() => onOutput(parsed));
+            outputChain = outputChain
+              .then(() => onOutput(parsed))
+              .catch((err) =>
+                logger.error(
+                  { group: group.name, err },
+                  'Error in streaming output callback',
+                ),
+              );
           } catch (err) {
             logger.warn(
               { group: group.name, error: err },

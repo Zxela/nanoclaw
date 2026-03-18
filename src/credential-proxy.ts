@@ -47,6 +47,9 @@ export function startCredentialProxy(
   return new Promise((resolve, reject) => {
     const MAX_BODY_SIZE = 10 * 1024 * 1024; // 10MB
     const server = createServer((req, res) => {
+      req.on('error', (err) =>
+        logger.debug({ err, url: req.url }, 'Client request error'),
+      );
       const chunks: Buffer[] = [];
       let bodySize = 0;
       req.on('data', (c) => {
@@ -125,6 +128,10 @@ export function startCredentialProxy(
 
     server.listen(port, host, () => {
       logger.info({ port, host, authMode }, 'Credential proxy started');
+      server.removeListener('error', reject);
+      server.on('error', (err) =>
+        logger.error({ err }, 'Credential proxy server error'),
+      );
       resolve(server);
     });
 

@@ -514,8 +514,16 @@ async function main(): Promise<void> {
     for (const ch of channels) await ch.disconnect();
     process.exit(0);
   };
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
+  const handleSignal = (signal: string) => {
+    shutdown(signal).catch((err) => {
+      logger.error({ err }, 'Shutdown error');
+      process.exit(1);
+    });
+    // Hard kill if graceful shutdown hangs
+    setTimeout(() => process.exit(1), 15000).unref();
+  };
+  process.on('SIGTERM', () => handleSignal('SIGTERM'));
+  process.on('SIGINT', () => handleSignal('SIGINT'));
 
   // Handle /remote-control and /remote-control-end commands
   async function handleRemoteControl(
