@@ -173,7 +173,10 @@ export class GroupQueue {
       fs.renameSync(tempPath, filepath);
       return true;
     } catch (err) {
-      logger.warn({ groupJid, err }, 'Failed to write IPC message to container');
+      logger.warn(
+        { groupJid, err },
+        'Failed to write IPC message to container',
+      );
       return false;
     }
   }
@@ -281,7 +284,7 @@ export class GroupQueue {
       if (!this.shuttingDown) {
         this.enqueueMessageCheck(groupJid);
       }
-    }, delayMs);
+    }, delayMs).unref();
   }
 
   private drainGroup(groupJid: string): void {

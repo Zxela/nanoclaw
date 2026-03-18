@@ -2,7 +2,7 @@
  * Container Runner for NanoClaw
  * Spawns agent execution in containers and handles IPC
  */
-import { ChildProcess, exec, spawn } from 'child_process';
+import { ChildProcess, spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
@@ -23,7 +23,7 @@ import {
   CONTAINER_RUNTIME_BIN,
   hostGatewayArgs,
   readonlyMountArgs,
-  stopContainer,
+  stopContainerAsync,
 } from './container-runtime.js';
 import { detectAuthMode } from './credential-proxy.js';
 import { validateAdditionalMounts } from './mount-security.js';
@@ -261,7 +261,9 @@ function buildVolumeMounts(
     group.folder,
     'agent-runner-src',
   );
-  if (!fs.existsSync(groupAgentRunnerDir) && fs.existsSync(agentRunnerSrc)) {
+  // Always sync agent-runner source so groups get updates after upgrades.
+  // The entrypoint recompiles TypeScript on each container start.
+  if (fs.existsSync(agentRunnerSrc)) {
     fs.cpSync(agentRunnerSrc, groupAgentRunnerDir, { recursive: true });
   }
   mounts.push({
@@ -494,7 +496,7 @@ export async function runContainerAgent(
         { group: group.name, containerName },
         'Container timeout, stopping gracefully',
       );
-      exec(stopContainer(containerName), { timeout: 15000 }, (err) => {
+      stopContainerAsync(containerName, (err) => {
         if (err) {
           logger.warn(
             { group: group.name, containerName, err },
@@ -513,7 +515,10 @@ export async function runContainerAgent(
       timeout = setTimeout(killOnTimeout, timeoutMs);
     };
 
+    let settled = false;
     container.on('close', (code) => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timeout);
       const duration = Date.now() - startTime;
 
@@ -709,6 +714,8 @@ export async function runContainerAgent(
     });
 
     container.on('error', (err) => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timeout);
       logger.error(
         { group: group.name, containerName, error: err },

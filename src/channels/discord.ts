@@ -369,36 +369,43 @@ export class DiscordChannel implements Channel {
     files: FileAttachment[],
     caption?: string,
   ): Promise<void> {
-    if (!this.client) throw new Error('Discord client not connected');
-
-    const channelId = jid.replace(/^dc:/, '');
-    const channel = await this.client.channels.fetch(channelId);
-
-    if (!channel || !('send' in channel)) {
-      logger.warn({ jid }, 'Discord channel not found or not text-based');
+    if (!this.client) {
+      logger.warn('Discord client not initialized');
       return;
     }
 
-    const textChannel = channel as TextChannel;
+    try {
+      const channelId = jid.replace(/^dc:/, '');
+      const channel = await this.client.channels.fetch(channelId);
 
-    // Send to active thread if one exists, otherwise to channel
-    const threadId = this.getThread(jid);
-    let target: { send: (options: object) => Promise<unknown> } = textChannel;
-    if (threadId) {
-      try {
-        const thread = await textChannel.threads.fetch(threadId);
-        if (thread) target = thread;
-      } catch {
-        // Thread deleted, fall through to channel
+      if (!channel || !('send' in channel)) {
+        logger.warn({ jid }, 'Discord channel not found or not text-based');
+        return;
       }
+
+      const textChannel = channel as TextChannel;
+
+      // Send to active thread if one exists, otherwise to channel
+      const threadId = this.getThread(jid);
+      let target: { send: (options: object) => Promise<unknown> } = textChannel;
+      if (threadId) {
+        try {
+          const thread = await textChannel.threads.fetch(threadId);
+          if (thread) target = thread;
+        } catch {
+          // Thread deleted, fall through to channel
+        }
+      }
+
+      await target.send({
+        content: caption || undefined,
+        files: files.map((f) => ({ attachment: f.path, name: f.name })),
+      });
+
+      logger.info({ jid, fileCount: files.length }, 'Discord files sent');
+    } catch (err) {
+      logger.error({ jid, err }, 'Failed to send Discord file');
     }
-
-    await target.send({
-      content: caption || undefined,
-      files: files.map((f) => ({ attachment: f.path, name: f.name })),
-    });
-
-    logger.info({ jid, fileCount: files.length }, 'Discord files sent');
   }
 
   async disconnect(): Promise<void> {
