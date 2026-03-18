@@ -86,152 +86,155 @@ export class DiscordChannel implements Channel {
 
     this.client.on(Events.MessageCreate, async (message: Message) => {
       try {
-      // Ignore bot messages (including own)
-      if (message.author.bot) return;
+        // Ignore bot messages (including own)
+        if (message.author.bot) return;
 
-      // Map thread messages back to parent channel so they route to the correct group
-      const isThread = message.channel.isThread();
-      const channelId =
-        isThread && message.channel.parentId
-          ? message.channel.parentId
-          : message.channelId;
-      const chatJid = `dc:${channelId}`;
-      let content = message.content;
-      const timestamp = message.createdAt.toISOString();
-      const senderName =
-        message.member?.displayName ||
-        message.author.displayName ||
-        message.author.username;
-      const sender = message.author.id;
-      const msgId = message.id;
+        // Map thread messages back to parent channel so they route to the correct group
+        const isThread = message.channel.isThread();
+        const channelId =
+          isThread && message.channel.parentId
+            ? message.channel.parentId
+            : message.channelId;
+        const chatJid = `dc:${channelId}`;
+        let content = message.content;
+        const timestamp = message.createdAt.toISOString();
+        const senderName =
+          message.member?.displayName ||
+          message.author.displayName ||
+          message.author.username;
+        const sender = message.author.id;
+        const msgId = message.id;
 
-      // Determine chat name
-      let chatName: string;
-      if (message.guild) {
-        const textChannel = message.channel as TextChannel;
-        chatName = `${message.guild.name} #${textChannel.name}`;
-      } else {
-        chatName = senderName;
-      }
-
-      // Replies in a bot-created thread are implicitly directed at the bot
-      const isInBotThread =
-        isThread && this.getThread(chatJid) === message.channelId;
-      if (isInBotThread && !TRIGGER_PATTERN.test(content)) {
-        content = `@${ASSISTANT_NAME} ${content}`;
-        this.activeConversation.add(chatJid);
-      }
-
-      // Translate Discord @bot mentions into TRIGGER_PATTERN format.
-      // Discord mentions look like <@botUserId> — these won't match
-      // TRIGGER_PATTERN (e.g., ^@Andy\b), so we prepend the trigger
-      // when the bot is @mentioned.
-      if (!isInBotThread && this.client?.user) {
-        const botId = this.client.user.id;
-        // Check for role mentions that reference the bot's managed role
-        const botRoleId = message.guild?.members?.me?.roles?.botRole?.id;
-        const isBotMentioned =
-          message.mentions.users.has(botId) ||
-          content.includes(`<@${botId}>`) ||
-          content.includes(`<@!${botId}>`) ||
-          (botRoleId && content.includes(`<@&${botRoleId}>`));
-
-        if (isBotMentioned) {
-          // Strip the <@botId> or <@&roleId> mention to avoid visual clutter
-          content = content
-            .replace(new RegExp(`<@!?${botId}>`, 'g'), '')
-            .replace(
-              botRoleId ? new RegExp(`<@&${botRoleId}>`, 'g') : /(?!)/g,
-              '',
-            )
-            .trim();
-          // Prepend trigger if not already present
-          if (!TRIGGER_PATTERN.test(content)) {
-            content = `@${ASSISTANT_NAME} ${content}`;
-          }
-          // Store this message so the response is sent as a thread
-          this.pendingTrigger.set(chatJid, message);
-          this.activeConversation.add(chatJid);
-          this.deleteThread(chatJid);
-        }
-      }
-
-      // Handle attachments — store placeholders so the agent knows something was sent
-      if (message.attachments.size > 0) {
-        const attachmentDescriptions = [...message.attachments.values()].map(
-          (att) => {
-            const contentType = att.contentType || '';
-            if (contentType.startsWith('image/')) {
-              return `[Image: ${att.name || 'image'}]`;
-            } else if (contentType.startsWith('video/')) {
-              return `[Video: ${att.name || 'video'}]`;
-            } else if (contentType.startsWith('audio/')) {
-              return `[Audio: ${att.name || 'audio'}]`;
-            } else {
-              return `[File: ${att.name || 'file'}]`;
-            }
-          },
-        );
-        if (content) {
-          content = `${content}\n${attachmentDescriptions.join('\n')}`;
+        // Determine chat name
+        let chatName: string;
+        if (message.guild) {
+          const textChannel = message.channel as TextChannel;
+          chatName = `${message.guild.name} #${textChannel.name}`;
         } else {
-          content = attachmentDescriptions.join('\n');
+          chatName = senderName;
         }
-      }
 
-      // Handle reply context — include who the user is replying to
-      if (message.reference?.messageId) {
-        try {
-          const repliedTo = await message.channel.messages.fetch(
-            message.reference.messageId,
+        // Replies in a bot-created thread are implicitly directed at the bot
+        const isInBotThread =
+          isThread && this.getThread(chatJid) === message.channelId;
+        if (isInBotThread && !TRIGGER_PATTERN.test(content)) {
+          content = `@${ASSISTANT_NAME} ${content}`;
+          this.activeConversation.add(chatJid);
+        }
+
+        // Translate Discord @bot mentions into TRIGGER_PATTERN format.
+        // Discord mentions look like <@botUserId> — these won't match
+        // TRIGGER_PATTERN (e.g., ^@Andy\b), so we prepend the trigger
+        // when the bot is @mentioned.
+        if (!isInBotThread && this.client?.user) {
+          const botId = this.client.user.id;
+          // Check for role mentions that reference the bot's managed role
+          const botRoleId = message.guild?.members?.me?.roles?.botRole?.id;
+          const isBotMentioned =
+            message.mentions.users.has(botId) ||
+            content.includes(`<@${botId}>`) ||
+            content.includes(`<@!${botId}>`) ||
+            (botRoleId && content.includes(`<@&${botRoleId}>`));
+
+          if (isBotMentioned) {
+            // Strip the <@botId> or <@&roleId> mention to avoid visual clutter
+            content = content
+              .replace(new RegExp(`<@!?${botId}>`, 'g'), '')
+              .replace(
+                botRoleId ? new RegExp(`<@&${botRoleId}>`, 'g') : /(?!)/g,
+                '',
+              )
+              .trim();
+            // Prepend trigger if not already present
+            if (!TRIGGER_PATTERN.test(content)) {
+              content = `@${ASSISTANT_NAME} ${content}`;
+            }
+            // Store this message so the response is sent as a thread
+            this.pendingTrigger.set(chatJid, message);
+            this.activeConversation.add(chatJid);
+            this.deleteThread(chatJid);
+          }
+        }
+
+        // Handle attachments — store placeholders so the agent knows something was sent
+        if (message.attachments.size > 0) {
+          const attachmentDescriptions = [...message.attachments.values()].map(
+            (att) => {
+              const contentType = att.contentType || '';
+              if (contentType.startsWith('image/')) {
+                return `[Image: ${att.name || 'image'}]`;
+              } else if (contentType.startsWith('video/')) {
+                return `[Video: ${att.name || 'video'}]`;
+              } else if (contentType.startsWith('audio/')) {
+                return `[Audio: ${att.name || 'audio'}]`;
+              } else {
+                return `[File: ${att.name || 'file'}]`;
+              }
+            },
           );
-          const replyAuthor =
-            repliedTo.member?.displayName ||
-            repliedTo.author.displayName ||
-            repliedTo.author.username;
-          content = `[Reply to ${replyAuthor}] ${content}`;
-        } catch {
-          // Referenced message may have been deleted
+          if (content) {
+            content = `${content}\n${attachmentDescriptions.join('\n')}`;
+          } else {
+            content = attachmentDescriptions.join('\n');
+          }
         }
-      }
 
-      // Store chat metadata for discovery
-      const isGroup = message.guild !== null;
-      this.opts.onChatMetadata(
-        chatJid,
-        timestamp,
-        chatName,
-        'discord',
-        isGroup,
-      );
+        // Handle reply context — include who the user is replying to
+        if (message.reference?.messageId) {
+          try {
+            const repliedTo = await message.channel.messages.fetch(
+              message.reference.messageId,
+            );
+            const replyAuthor =
+              repliedTo.member?.displayName ||
+              repliedTo.author.displayName ||
+              repliedTo.author.username;
+            content = `[Reply to ${replyAuthor}] ${content}`;
+          } catch {
+            // Referenced message may have been deleted
+          }
+        }
 
-      // Only deliver full message for registered groups
-      const group = this.opts.registeredGroups()[chatJid];
-      if (!group) {
-        logger.debug(
-          { chatJid, chatName },
-          'Message from unregistered Discord channel',
+        // Store chat metadata for discovery
+        const isGroup = message.guild !== null;
+        this.opts.onChatMetadata(
+          chatJid,
+          timestamp,
+          chatName,
+          'discord',
+          isGroup,
         );
-        return;
-      }
 
-      // Deliver message — startMessageLoop() will pick it up
-      this.opts.onMessage(chatJid, {
-        id: msgId,
-        chat_jid: chatJid,
-        sender,
-        sender_name: senderName,
-        content,
-        timestamp,
-        is_from_me: false,
-      });
+        // Only deliver full message for registered groups
+        const group = this.opts.registeredGroups()[chatJid];
+        if (!group) {
+          logger.debug(
+            { chatJid, chatName },
+            'Message from unregistered Discord channel',
+          );
+          return;
+        }
 
-      logger.info(
-        { chatJid, chatName, sender: senderName },
-        'Discord message stored',
-      );
+        // Deliver message — startMessageLoop() will pick it up
+        this.opts.onMessage(chatJid, {
+          id: msgId,
+          chat_jid: chatJid,
+          sender,
+          sender_name: senderName,
+          content,
+          timestamp,
+          is_from_me: false,
+        });
+
+        logger.info(
+          { chatJid, chatName, sender: senderName },
+          'Discord message stored',
+        );
       } catch (err) {
-        logger.error({ err, messageId: message.id }, 'Unhandled error in Discord message handler');
+        logger.error(
+          { err, messageId: message.id },
+          'Unhandled error in Discord message handler',
+        );
       }
     });
 
@@ -262,12 +265,20 @@ export class DiscordChannel implements Channel {
     text: string,
   ): Promise<void> {
     const MAX_LENGTH = 2000;
-    if (text.length <= MAX_LENGTH) {
-      await target.send(text);
-    } else {
-      for (let i = 0; i < text.length; i += MAX_LENGTH) {
-        await target.send(text.slice(i, i + MAX_LENGTH));
+    while (text.length > 0) {
+      if (text.length <= MAX_LENGTH) {
+        await target.send(text);
+        break;
       }
+      // Split on last newline or space within limit to avoid breaking words/codepoints
+      let splitAt = text.lastIndexOf('\n', MAX_LENGTH);
+      if (splitAt <= 0) splitAt = text.lastIndexOf(' ', MAX_LENGTH);
+      if (splitAt <= 0) splitAt = MAX_LENGTH;
+      // Don't split a UTF-16 surrogate pair
+      const code = text.charCodeAt(splitAt - 1);
+      if (code >= 0xd800 && code <= 0xdbff) splitAt--;
+      await target.send(text.slice(0, splitAt));
+      text = text.slice(splitAt).replace(/^\n/, '');
     }
   }
 
@@ -334,6 +345,8 @@ export class DiscordChannel implements Channel {
 
       // No trigger context (scheduled task, IPC, etc.) — send to main channel
       await this.sendChunked(textChannel, text);
+      // Clear conversation flag so future scheduled tasks go to main channel, not stale threads
+      this.activeConversation.delete(jid);
       logger.info(
         { jid, length: text.length },
         'Discord message sent to channel',

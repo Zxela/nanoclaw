@@ -172,7 +172,8 @@ export class GroupQueue {
       fs.writeFileSync(tempPath, JSON.stringify({ type: 'message', text }));
       fs.renameSync(tempPath, filepath);
       return true;
-    } catch {
+    } catch (err) {
+      logger.warn({ groupJid, err }, 'Failed to write IPC message to container');
       return false;
     }
   }
