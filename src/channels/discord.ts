@@ -377,17 +377,20 @@ export class DiscordChannel implements Channel {
     }
   }
 
-  async sendChannelMessage(jid: string, text: string): Promise<void> {
+  async sendChannelMessage(
+    jid: string,
+    text: string,
+  ): Promise<string | undefined> {
     if (!this.client) {
       logger.warn('Discord client not initialized');
-      return;
+      return undefined;
     }
     try {
       const channelId = jid.replace(/^dc:/, '');
       const channel = await this.client.channels.fetch(channelId);
       if (!channel || !('send' in channel)) {
         logger.warn({ jid }, 'Discord channel not found or not text-based');
-        return;
+        return undefined;
       }
       const textChannel = channel as TextChannel;
       await this.sendChunked(textChannel, text);
@@ -395,8 +398,10 @@ export class DiscordChannel implements Channel {
         { jid, length: text.length },
         'Discord scheduled message sent to channel',
       );
+      return undefined;
     } catch (err) {
       logger.error({ jid, err }, 'Failed to send Discord channel message');
+      return undefined;
     }
   }
 

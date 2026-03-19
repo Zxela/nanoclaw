@@ -25,7 +25,10 @@ import { RegisteredGroup } from './types.js';
 
 export interface IpcDeps {
   sendMessage: (jid: string, text: string) => Promise<void>;
-  sendChannelMessage: (jid: string, text: string) => Promise<void>;
+  sendChannelMessage: (
+    jid: string,
+    text: string,
+  ) => Promise<string | undefined>;
   sendFile: (
     jid: string,
     files: Array<{ path: string; name: string }>,
