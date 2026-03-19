@@ -343,6 +343,12 @@ function buildContainerArgs(
     args.push('-e', 'NANOCLAW_SCHEDULED_TASK=1');
   }
 
+  // Inject Vercel token if configured (for deployment operations)
+  const vercelSecrets = readEnvFile(['VERCEL_TOKEN']);
+  if (vercelSecrets.VERCEL_TOKEN) {
+    args.push('-e', `VERCEL_TOKEN=${vercelSecrets.VERCEL_TOKEN}`);
+  }
+
   // Runtime-specific args for host gateway resolution
   args.push(...hostGatewayArgs());
 
