@@ -43,6 +43,11 @@ import {
   setSession,
   storeChatMetadata,
   storeMessage,
+  createThreadContext,
+  getThreadContextById,
+  getThreadContextByThreadId,
+  updateThreadContext,
+  ThreadContext,
 } from './db.js';
 import { GroupQueue } from './group-queue.js';
 import { resolveGroupFolderPath } from './group-folder.js';
@@ -72,6 +77,9 @@ let sessions: Record<string, string> = {};
 let registeredGroups: Record<string, RegisteredGroup> = {};
 let lastAgentTimestamp: Record<string, string> = {};
 let messageLoopRunning = false;
+
+// In-memory map: message key → thread context ID (populated by onMessage, consumed by message loop)
+const messageThreadContext = new Map<string, number>();
 
 const channels: Channel[] = [];
 const queue = new GroupQueue();
@@ -151,7 +159,10 @@ export function _setRegisteredGroups(
  * Process all pending messages for a group.
  * Called by the GroupQueue when it's this group's turn.
  */
-async function processGroupMessages(chatJid: string): Promise<boolean> {
+async function processGroupMessages(
+  chatJid: string,
+  threadId?: string,
+): Promise<boolean> {
   const group = registeredGroups[chatJid];
   if (!group) return true;
 
@@ -183,6 +194,21 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
     if (!hasTrigger) return true;
   }
 
+  // Look up thread context if threadId is provided
+  let threadContext: ThreadContext | undefined;
+  if (threadId) {
+    // threadId could be a real Discord thread ID or 'pending-{contextId}'
+    if (threadId.startsWith('pending-')) {
+      const ctxId = parseInt(threadId.replace('pending-', ''), 10);
+      threadContext = getThreadContextById(ctxId);
+    } else if (threadId !== 'default') {
+      threadContext = getThreadContextByThreadId(threadId);
+    }
+  }
+
+  // Use thread-specific session if available
+  const sessionId = threadContext?.session_id || sessions[group.folder];
+
   const prompt = formatMessages(missedMessages, TIMEZONE, channel);
 
   // Advance cursor so the piping path in startMessageLoop won't re-fetch
@@ -193,7 +219,7 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
   saveState();
 
   logger.info(
-    { group: group.name, messageCount: missedMessages.length },
+    { group: group.name, messageCount: missedMessages.length, threadId },
     'Processing messages',
   );
 
@@ -207,40 +233,62 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
         { group: group.name },
         'Idle timeout, closing container stdin',
       );
-      queue.closeStdin(chatJid);
+      queue.closeStdin(chatJid, threadId);
     }, IDLE_TIMEOUT);
   };
+
+  // Set thread context on Discord channel before streaming
+  if (channel.name === 'discord' && threadContext && threadId) {
+    (channel as any).setCurrentThreadContext(chatJid, threadId, threadContext);
+  }
 
   await channel.setTyping?.(chatJid, true);
   let hadError = false;
   let outputSentToUser = false;
 
-  const output = await runAgent(group, prompt, chatJid, async (result) => {
-    // Streaming output callback — called for each agent result
-    if (result.result) {
-      const raw =
-        typeof result.result === 'string'
-          ? result.result
-          : JSON.stringify(result.result);
-      // Strip <internal>...</internal> blocks — agent uses these for internal reasoning
-      const text = raw.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim();
-      logger.info({ group: group.name }, `Agent output: ${raw.slice(0, 200)}`);
-      if (text) {
-        await channel.sendMessage(chatJid, text);
-        outputSentToUser = true;
+  const output = await runAgent(
+    group,
+    prompt,
+    chatJid,
+    async (result) => {
+      // Streaming output callback — called for each agent result
+      if (result.result) {
+        const raw =
+          typeof result.result === 'string'
+            ? result.result
+            : JSON.stringify(result.result);
+        // Strip <internal>...</internal> blocks — agent uses these for internal reasoning
+        const text = raw.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim();
+        logger.info(
+          { group: group.name },
+          `Agent output: ${raw.slice(0, 200)}`,
+        );
+        if (text) {
+          await channel.sendMessage(chatJid, text);
+          outputSentToUser = true;
+        }
+        // Only reset idle timer on actual results, not session-update markers (result: null)
+        resetIdleTimer();
       }
-      // Only reset idle timer on actual results, not session-update markers (result: null)
-      resetIdleTimer();
-    }
 
-    if (result.status === 'success') {
-      queue.notifyIdle(chatJid);
-    }
+      if (result.status === 'success') {
+        queue.notifyIdle(chatJid, threadId);
+      }
 
-    if (result.status === 'error') {
-      hadError = true;
-    }
-  });
+      if (result.status === 'error') {
+        hadError = true;
+      }
+
+      // Update thread context with new session ID if available
+      if (result.newSessionId && threadContext) {
+        updateThreadContext(threadContext.id, {
+          sessionId: result.newSessionId,
+        });
+      }
+    },
+    false,
+    threadId,
+  );
 
   await channel.setTyping?.(chatJid, false);
   if (idleTimer) clearTimeout(idleTimer);
@@ -274,6 +322,7 @@ async function runAgent(
   chatJid: string,
   onOutput?: (output: ContainerOutput) => Promise<void>,
   _retried = false,
+  threadId?: string,
 ): Promise<'success' | 'error'> {
   const isMain = group.isMain === true;
   const sessionId = sessions[group.folder];
@@ -324,9 +373,16 @@ async function runAgent(
         chatJid,
         isMain,
         assistantName: ASSISTANT_NAME,
+        threadId,
       },
       (proc, containerName) =>
-        queue.registerProcess(chatJid, proc, containerName, group.folder),
+        queue.registerProcess(
+          chatJid,
+          proc,
+          containerName,
+          group.folder,
+          threadId,
+        ),
       wrappedOnOutput,
     );
 
@@ -354,7 +410,7 @@ async function runAgent(
           );
           return 'error';
         }
-        return runAgent(group, prompt, chatJid, onOutput, true);
+        return runAgent(group, prompt, chatJid, onOutput, true, threadId);
       }
 
       logger.error(
@@ -435,6 +491,19 @@ async function startMessageLoop(): Promise<void> {
             if (!hasTrigger) continue;
           }
 
+          // Determine thread context from the triggering message
+          let threadId: string | undefined;
+          for (const msg of [...groupMessages].reverse()) {
+            const ctxKey = `${msg.id}:${msg.chat_jid}`;
+            const ctxId = messageThreadContext.get(ctxKey);
+            if (ctxId) {
+              messageThreadContext.delete(ctxKey);
+              const ctx = getThreadContextById(ctxId);
+              threadId = ctx?.thread_id ?? `pending-${ctxId}`;
+              break;
+            }
+          }
+
           // Pull all messages since lastAgentTimestamp so non-trigger
           // context that accumulated between triggers is included.
           const allPending = getMessagesSince(
@@ -446,7 +515,21 @@ async function startMessageLoop(): Promise<void> {
             allPending.length > 0 ? allPending : groupMessages;
           const formatted = formatMessages(messagesToSend, TIMEZONE, channel);
 
-          if (queue.sendMessage(chatJid, formatted)) {
+          if (threadId && queue.sendMessage(chatJid, threadId, formatted)) {
+            logger.debug(
+              { chatJid, threadId, count: messagesToSend.length },
+              'Piped messages to active thread container',
+            );
+            lastAgentTimestamp[chatJid] =
+              messagesToSend[messagesToSend.length - 1].timestamp;
+            saveState();
+            // Show typing indicator while the container processes the piped message
+            channel
+              .setTyping?.(chatJid, true)
+              ?.catch((err) =>
+                logger.warn({ chatJid, err }, 'Failed to set typing indicator'),
+              );
+          } else if (!threadId && queue.sendMessage(chatJid, formatted)) {
             logger.debug(
               { chatJid, count: messagesToSend.length },
               'Piped messages to active container',
@@ -463,10 +546,10 @@ async function startMessageLoop(): Promise<void> {
           } else {
             // No active container or IPC rejected — enqueue for processing
             logger.info(
-              { chatJid },
+              { chatJid, threadId },
               'sendMessage returned false, enqueuing for new container',
             );
-            queue.enqueueMessageCheck(chatJid);
+            queue.enqueueThreadMessageCheck(chatJid, threadId || 'default');
           }
         }
       }
@@ -644,6 +727,12 @@ async function main(): Promise<void> {
         }
       }
       storeMessage(msg);
+      if (msg.thread_context_id) {
+        messageThreadContext.set(
+          `${msg.id}:${msg.chat_jid}`,
+          msg.thread_context_id,
+        );
+      }
     },
     onChatMetadata: (
       chatJid: string,
@@ -683,19 +772,29 @@ async function main(): Promise<void> {
     queue,
     onProcess: (groupJid, proc, containerName, groupFolder) =>
       queue.registerProcess(groupJid, proc, containerName, groupFolder),
-    sendMessage: async (jid, rawText) => {
+    sendMessage: async (jid, rawText, taskId?, sessionId?) => {
       const channel = findChannel(channels, jid);
       if (!channel) {
         logger.warn({ jid }, 'No channel owns JID, cannot send message');
         return;
       }
       const text = formatOutbound(rawText);
-      // Scheduled task results always go to the main channel, never a thread
       if (text) {
+        let messageId: string | undefined;
         if (channel.sendChannelMessage) {
-          await channel.sendChannelMessage(jid, text);
+          messageId = await channel.sendChannelMessage(jid, text);
         } else {
           await channel.sendMessage(jid, text);
+        }
+        if (messageId && taskId) {
+          createThreadContext({
+            chatJid: jid,
+            threadId: null,
+            sessionId: sessionId || null,
+            originMessageId: messageId,
+            source: 'scheduled_task',
+            taskId: parseInt(taskId, 10),
+          });
         }
       }
     },
@@ -777,7 +876,9 @@ async function main(): Promise<void> {
       }
     },
   });
-  queue.setProcessMessagesFn(processGroupMessages);
+  queue.setProcessMessagesFn(async (groupJid: string, threadId?: string) => {
+    return processGroupMessages(groupJid, threadId);
+  });
   recoverPendingMessages();
   startMessageLoop().catch((err) => {
     logger.fatal({ err }, 'Message loop crashed unexpectedly');
