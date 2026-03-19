@@ -374,7 +374,10 @@ export class DiscordChannel implements Channel {
       }
       const textChannel = channel as TextChannel;
       await this.sendChunked(textChannel, text);
-      logger.info({ jid, length: text.length }, 'Discord scheduled message sent to channel');
+      logger.info(
+        { jid, length: text.length },
+        'Discord scheduled message sent to channel',
+      );
     } catch (err) {
       logger.error({ jid, err }, 'Failed to send Discord channel message');
     }

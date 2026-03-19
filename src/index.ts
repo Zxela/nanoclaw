@@ -691,7 +691,12 @@ async function main(): Promise<void> {
       }
       const text = formatOutbound(rawText);
       // Scheduled task results always go to the main channel, never a thread
-      if (text) await (channel.sendChannelMessage ?? channel.sendMessage).call(channel, jid, text);
+      if (text)
+        await (channel.sendChannelMessage ?? channel.sendMessage).call(
+          channel,
+          jid,
+          text,
+        );
     },
   });
   startPrWatcher({
@@ -708,7 +713,12 @@ async function main(): Promise<void> {
       }
       const text = formatOutbound(rawText);
       // PR watcher results always go to the main channel, never a thread
-      if (text) await (channel.sendChannelMessage ?? channel.sendMessage).call(channel, jid, text);
+      if (text)
+        await (channel.sendChannelMessage ?? channel.sendMessage).call(
+          channel,
+          jid,
+          text,
+        );
     },
     botGitHubUser: process.env.GIT_AUTHOR_NAME || undefined,
   });
@@ -717,6 +727,11 @@ async function main(): Promise<void> {
       const channel = findChannel(channels, jid);
       if (!channel) throw new Error(`No channel for JID: ${jid}`);
       return channel.sendMessage(jid, text);
+    },
+    sendChannelMessage: (jid, text) => {
+      const channel = findChannel(channels, jid);
+      if (!channel) throw new Error(`No channel for JID: ${jid}`);
+      return (channel.sendChannelMessage ?? channel.sendMessage).call(channel, jid, text);
     },
     sendFile: (jid, files, caption) => {
       const channel = findChannel(channels, jid);
