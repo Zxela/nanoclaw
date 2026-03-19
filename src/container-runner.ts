@@ -205,7 +205,11 @@ export function buildVolumeMounts(
     'settings.json',
   );
   const settingsFile = path.join(groupSessionsDir, 'settings.json');
-  if (threadId && !fs.existsSync(settingsFile) && fs.existsSync(groupTemplateSettings)) {
+  if (
+    threadId &&
+    !fs.existsSync(settingsFile) &&
+    fs.existsSync(groupTemplateSettings)
+  ) {
     // Copy settings from the group-level template into the thread-specific dir
     fs.copyFileSync(groupTemplateSettings, settingsFile);
   } else if (!fs.existsSync(settingsFile)) {
