@@ -13,50 +13,46 @@ The user tells you what they want to ask the agent, and you execute the query.
 
 ## How It Works
 
-1. Read the registered groups from the database at `data/nanoclaw.db`
-2. Check which groups have active containers by reading `data/status.json`
-3. Determine the target group:
+Debug queries are routed through the live NanoClaw process via IPC. This ensures proper container management — no rogue containers, no competing with scheduled tasks.
+
+1. Determine the target group:
    - If the user specified a group name/folder, use that
    - If only one group exists, use it automatically
    - If multiple groups exist, list them and ask the user which one
-4. Write the debug query:
-   - Create `data/ipc/{groupFolder}/debug/query.json` with format: `{"id": "uuid", "question": "...", "timestamp": ...}`
-   - For active containers: also write the query to `data/ipc/{groupFolder}/{threadId}/input/` as a JSON message with the debug prefix
-   - For inactive groups: the orchestrator will spawn a fresh container
-5. Call the `sendDebugQuery` function from `src/debug-query.ts`
-6. Display the agent's response to the user
+2. Write a `debug_query` IPC task file to `data/ipc/{groupFolder}/tasks/`
+3. The live NanoClaw process picks it up, routes through GroupQueue, and spawns or pipes to a container
+4. Poll `data/ipc/{groupFolder}/debug/response.json` for the agent's answer
+5. Display the response to the user
+
+## Execution
+
+Run from the project root:
+
+```bash
+npx tsx scripts/debug-query.mts GROUP_FOLDER "Your question here"
+```
+
+Replace `GROUP_FOLDER` with the target group folder name. If omitted, defaults to the first registered group.
+
+Example:
+```bash
+npx tsx scripts/debug-query.mts discord_general "What errors have you seen recently?"
+```
 
 ## Important
 
 - This skill runs on the HOST, not inside a container
-- Use `npx tsx` to execute TypeScript files if needed
-- The debug response file is at `data/ipc/{groupFolder}/debug/response.json`
-- Timeout: 60s for active containers, 120s for fresh containers
+- Requires the NanoClaw process to be running (it routes through the live IPC watcher)
+- Timeout: 5 minutes (accounts for container boot + rate limiting)
 - Only one debug query per group at a time
+- The response file is at `data/ipc/{groupFolder}/debug/response.json`
 
-## Quick Execution
-
-To send a debug query, run this from the project root:
+## To list registered groups
 
 ```bash
 npx tsx -e "
-import { sendDebugQuery, listGroupsForDebug } from './src/debug-query.ts';
-import { GroupQueue } from './src/group-queue.ts';
-import { getAllRegisteredGroups } from './src/db.ts';
-
-const groupQueue = new GroupQueue();
-const groups = getAllRegisteredGroups();
-
-// List groups:
-// const list = listGroupsForDebug(groupQueue);
-// console.log(JSON.stringify(list, null, 2));
-
-// Send query:
-const result = await sendDebugQuery('GROUP_FOLDER', 'QUESTION', groupQueue, groups);
-console.log(JSON.stringify(result, null, 2));
+import { initDatabase, getAllRegisteredGroups } from './src/db.ts';
+initDatabase();
+console.log(JSON.stringify(getAllRegisteredGroups(), null, 2));
 "
 ```
-
-Replace `GROUP_FOLDER` with the target group folder name and `QUESTION` with the debug question.
-
-**Limitation:** When running standalone (not from the running NanoClaw process), the GroupQueue won't have state about active containers. The query will always spawn a fresh container. To query an active container, you would need to integrate with the running process. For most debugging use cases, a fresh container with access to the group's workspace and CLAUDE.md is sufficient.
