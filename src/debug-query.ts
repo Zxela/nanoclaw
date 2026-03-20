@@ -114,6 +114,8 @@ function pollForResponse(
           const data = JSON.parse(fs.readFileSync(responseFile, 'utf-8'));
           if (data.id === queryId) {
             cleanup(debugDir, queryId);
+            // Signal the container to exit (write _close sentinel)
+            closeContainer(debugDir);
             const status = VALID_RESPONSE_STATUSES.has(data.status)
               ? data.status
               : 'success';
@@ -133,6 +135,20 @@ function pollForResponse(
 
     poll();
   });
+}
+
+/**
+ * Signal the container to exit by writing a _close sentinel.
+ * The debug dir is at .../debug/, the input dir is its sibling at .../input/.
+ */
+function closeContainer(debugDir: string): void {
+  const inputDir = path.join(path.dirname(debugDir), 'input');
+  try {
+    fs.mkdirSync(inputDir, { recursive: true });
+    fs.writeFileSync(path.join(inputDir, '_close'), '');
+  } catch {
+    // Best-effort
+  }
 }
 
 /**
