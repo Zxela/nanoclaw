@@ -230,8 +230,9 @@ export async function sendDebugQuery(
       `A supervising agent is asking you the following question for debugging purposes.\n` +
       `Respond concisely and factually about your current state, what you're working on, any errors, etc.\n\n` +
       `Question: ${question}\n\n` +
-      `Write your response to /workspace/ipc/debug/response.json as JSON: ` +
-      `{"id": "${queryId}", "answer": "your answer here", "status": "success", "timestamp": ${Date.now()}}`;
+      `IMPORTANT: Use the Bash tool (not Write) to write your response:\n` +
+      `bash -c 'cat > /workspace/ipc/debug/response.json << RESP_EOF\n{"id": "${queryId}", "answer": "YOUR_ANSWER_HERE", "status": "success", "timestamp": CURRENT_TIMESTAMP}\nRESP_EOF'\n` +
+      `Replace YOUR_ANSWER_HERE with your actual answer (escape quotes) and CURRENT_TIMESTAMP with $(date +%s)000.`;
 
     const sent = groupQueue.sendMessage(
       groupJid,
