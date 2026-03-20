@@ -114,7 +114,9 @@ function pollForResponse(
           const data = JSON.parse(fs.readFileSync(responseFile, 'utf-8'));
           if (data.id === queryId) {
             cleanup(debugDir, queryId);
-            const status = VALID_RESPONSE_STATUSES.has(data.status) ? data.status : 'success';
+            const status = VALID_RESPONSE_STATUSES.has(data.status)
+              ? data.status
+              : 'success';
             resolve({
               status,
               answer: data.answer,
@@ -182,8 +184,9 @@ export async function sendDebugQuery(
   question: string,
   groupQueue: GroupQueue,
   registeredGroups: Record<string, RegisteredGroup>,
+  externalQueryId?: string,
 ): Promise<DebugQueryResult> {
-  const queryId = crypto.randomUUID();
+  const queryId = externalQueryId || crypto.randomUUID();
   const groupJid = findGroupJid(groupFolder, registeredGroups);
   if (!groupJid) {
     return {
@@ -209,7 +212,11 @@ export async function sendDebugQuery(
         };
       }
       logger.info({ groupFolder }, 'Removing stale debug query file');
-      try { fs.unlinkSync(queryFile); } catch { /* ignore */ }
+      try {
+        fs.unlinkSync(queryFile);
+      } catch {
+        /* ignore */
+      }
     }
 
     // Write query file (for the agent to find context about what's being asked)
@@ -259,7 +266,11 @@ export async function sendDebugQuery(
       };
     }
     logger.info({ groupFolder }, 'Removing stale debug query file');
-    try { fs.unlinkSync(queryFile); } catch { /* ignore */ }
+    try {
+      fs.unlinkSync(queryFile);
+    } catch {
+      /* ignore */
+    }
   }
 
   // Write query file

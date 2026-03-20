@@ -936,8 +936,14 @@ async function main(): Promise<void> {
       }
     },
     onDebugQuery: (sourceGroup, queryId, question) => {
-      sendDebugQuery(sourceGroup, question, queue, registeredGroups).catch(
-        (err) => logger.error({ err, sourceGroup, queryId }, 'Debug query failed'),
+      sendDebugQuery(
+        sourceGroup,
+        question,
+        queue,
+        registeredGroups,
+        queryId,
+      ).catch((err) =>
+        logger.error({ err, sourceGroup, queryId }, 'Debug query failed'),
       );
     },
   });
