@@ -14,12 +14,8 @@ export function formatMessages(
   messages: NewMessage[],
   timezone: string,
   channel?: Channel,
+  contextMessages?: NewMessage[],
 ): string {
-  const lines = messages.map((m) => {
-    const displayTime = formatLocalTime(m.timestamp, timezone);
-    return `<message sender="${escapeXml(m.sender_name)}" time="${escapeXml(displayTime)}">${escapeXml(m.content)}</message>`;
-  });
-
   const channelAttr = channel?.formattingInstructions
     ? ` channel="${escapeXml(channel.name)}"`
     : '';
@@ -29,7 +25,21 @@ export function formatMessages(
     ? `<channel_formatting>\n${channel.formattingInstructions}\n</channel_formatting>\n`
     : '';
 
-  return `${header}${formattingBlock}<messages>\n${lines.join('\n')}\n</messages>`;
+  let contextBlock = '';
+  if (contextMessages && contextMessages.length > 0) {
+    const contextLines = contextMessages.map((m) => {
+      const displayTime = formatLocalTime(m.timestamp, timezone);
+      return `<message sender="${escapeXml(m.sender_name)}" time="${escapeXml(displayTime)}">${escapeXml(m.content)}</message>`;
+    });
+    contextBlock = `<conversation_history>\n${contextLines.join('\n')}\n</conversation_history>\n`;
+  }
+
+  const lines = messages.map((m) => {
+    const displayTime = formatLocalTime(m.timestamp, timezone);
+    return `<message sender="${escapeXml(m.sender_name)}" time="${escapeXml(displayTime)}">${escapeXml(m.content)}</message>`;
+  });
+
+  return `${header}${formattingBlock}${contextBlock}<messages>\n${lines.join('\n')}\n</messages>`;
 }
 
 export function stripInternalTags(text: string): string {

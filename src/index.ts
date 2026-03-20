@@ -32,6 +32,7 @@ import {
   getAllRegisteredGroups,
   getAllSessions,
   getAllTasks,
+  getConversationContext,
   getMessagesSince,
   getNewMessages,
   getRegisteredGroup,
@@ -43,6 +44,7 @@ import {
   setSession,
   storeChatMetadata,
   storeMessage,
+  storeMessageDirect,
   createThreadContext,
   getThreadContextById,
   getThreadContextByThreadId,
@@ -209,7 +211,20 @@ async function processGroupMessages(
   // Use thread-specific session if available
   const sessionId = threadContext?.session_id || sessions[group.folder];
 
-  const prompt = formatMessages(missedMessages, TIMEZONE, channel);
+  // Include recent conversation history (with bot messages) so the agent
+  // has context even when session resume fails or a new container is spawned.
+  const conversationHistory = getConversationContext(chatJid);
+  const newMessageIds = new Set(missedMessages.map((m) => m.id));
+  const contextMessages = conversationHistory.filter(
+    (m) => !newMessageIds.has(m.id),
+  );
+
+  const prompt = formatMessages(
+    missedMessages,
+    TIMEZONE,
+    channel,
+    contextMessages.length > 0 ? contextMessages : undefined,
+  );
 
   // Advance cursor so the piping path in startMessageLoop won't re-fetch
   // these messages. Save the old cursor so we can roll back on error.
@@ -264,6 +279,17 @@ async function processGroupMessages(
         if (text) {
           await channel.sendMessage(chatJid, text);
           outputSentToUser = true;
+          // Store bot response so future containers have conversation context
+          storeMessageDirect({
+            id: `bot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            chat_jid: chatJid,
+            sender: ASSISTANT_NAME,
+            sender_name: ASSISTANT_NAME,
+            content: text,
+            timestamp: new Date().toISOString(),
+            is_from_me: true,
+            is_bot_message: true,
+          });
         }
         // Only reset idle timer on actual results, not session-update markers (result: null)
         resetIdleTimer();

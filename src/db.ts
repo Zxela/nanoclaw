@@ -411,6 +411,27 @@ export function getNewMessages(
   return { messages: rows, newTimestamp };
 }
 
+/**
+ * Get recent conversation messages INCLUDING bot messages.
+ * Used to provide conversation context when spawning new containers,
+ * so the agent has prior context even if session resume fails.
+ */
+export function getConversationContext(
+  chatJid: string,
+  limit: number = 20,
+): NewMessage[] {
+  const sql = `
+    SELECT * FROM (
+      SELECT id, chat_jid, sender, sender_name, content, timestamp, is_from_me
+      FROM messages
+      WHERE chat_jid = ? AND content != '' AND content IS NOT NULL
+      ORDER BY timestamp DESC
+      LIMIT ?
+    ) ORDER BY timestamp
+  `;
+  return db.prepare(sql).all(chatJid, limit) as NewMessage[];
+}
+
 export function getMessagesSince(
   chatJid: string,
   sinceTimestamp: string,
