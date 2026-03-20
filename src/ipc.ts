@@ -104,6 +104,7 @@ const KNOWN_IPC_SUBDIRS = new Set([
   'files',
   'prs',
   'input',
+  'debug',
 ]);
 
 function getIpcDirsForGroup(

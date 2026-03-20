@@ -111,6 +111,10 @@ export interface ContainerInput {
   isScheduledTask?: boolean;
   assistantName?: string;
   threadId?: string;
+  debugQuery?: {
+    id: string;
+    question: string;
+  };
 }
 
 export interface ContainerOutput {
@@ -255,7 +259,7 @@ export function buildVolumeMounts(
     : resolveGroupIpcPath(group.folder);
   // Container runs as node (uid 1000) and needs write access to IPC subdirs.
   // Use 0o770 (not 0o777) so other local users cannot inject/read IPC files.
-  for (const sub of ['messages', 'tasks', 'input', 'files', 'prs']) {
+  for (const sub of ['messages', 'tasks', 'input', 'files', 'prs', 'debug']) {
     const dir = path.join(groupIpcDir, sub);
     fs.mkdirSync(dir, { recursive: true });
     try {
