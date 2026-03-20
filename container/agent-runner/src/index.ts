@@ -27,6 +27,10 @@ interface ContainerInput {
   isMain: boolean;
   isScheduledTask?: boolean;
   assistantName?: string;
+  debugQuery?: {
+    id: string;
+    question: string;
+  };
 }
 
 interface ContainerOutput {
