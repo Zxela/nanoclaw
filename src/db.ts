@@ -407,6 +407,48 @@ export function storeMessageDirect(msg: {
   );
 }
 
+/**
+ * Mark a batch of messages as processed by their IDs.
+ * Uses a transaction for atomicity.
+ */
+export function markMessagesProcessed(
+  messages: Array<{ id: string; chat_jid: string }>,
+): void {
+  if (messages.length === 0) return;
+  const stmt = db.prepare(
+    'UPDATE messages SET processed = 1 WHERE id = ? AND chat_jid = ?',
+  );
+  const markAll = db.transaction(
+    (msgs: Array<{ id: string; chat_jid: string }>) => {
+      for (const msg of msgs) {
+        stmt.run(msg.id, msg.chat_jid);
+      }
+    },
+  );
+  markAll(messages);
+}
+
+/**
+ * Mark a batch of messages as unprocessed (rollback on error).
+ * Uses a transaction for atomicity.
+ */
+export function markMessagesUnprocessed(
+  messages: Array<{ id: string; chat_jid: string }>,
+): void {
+  if (messages.length === 0) return;
+  const stmt = db.prepare(
+    'UPDATE messages SET processed = 0 WHERE id = ? AND chat_jid = ?',
+  );
+  const markAll = db.transaction(
+    (msgs: Array<{ id: string; chat_jid: string }>) => {
+      for (const msg of msgs) {
+        stmt.run(msg.id, msg.chat_jid);
+      }
+    },
+  );
+  markAll(messages);
+}
+
 export function getNewMessages(
   jids: string[],
   lastTimestamp: string,
