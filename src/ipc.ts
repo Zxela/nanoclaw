@@ -82,7 +82,12 @@ function resolveContainerPath(
   for (const [prefix, hostBase] of prefixMap) {
     if (normalized.startsWith(prefix)) {
       const relative = normalized.slice(prefix.length);
-      return path.join(hostBase, relative);
+      const result = path.join(hostBase, relative);
+      logger.debug(
+        { containerPath, hostPath: result, prefix, groupFolder },
+        'resolveContainerPath: resolved',
+      );
+      return result;
     }
   }
 
@@ -101,6 +106,15 @@ function resolveContainerPath(
     return groupPath;
   }
 
+  logger.warn(
+    {
+      containerPath,
+      normalized,
+      groupFolder,
+      checkedPrefixes: prefixMap.map(([prefix]) => prefix),
+    },
+    'resolveContainerPath: no matching prefix for container path',
+  );
   return null;
 }
 
