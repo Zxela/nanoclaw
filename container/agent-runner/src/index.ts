@@ -616,6 +616,18 @@ async function runQuery(
     const msgType = message.type === 'system' ? `system/${(message as { subtype?: string }).subtype}` : message.type;
     log(`[msg #${messageCount}] type=${msgType}`);
 
+    if (message.type === 'assistant' && 'content' in message) {
+      const content = (message as any).content;
+      if (Array.isArray(content)) {
+        for (const block of content) {
+          if (block.type === 'tool_use') {
+            const inputStr = JSON.stringify(block.input).slice(0, 300);
+            log(`[tool] ${block.name} ${inputStr}`);
+          }
+        }
+      }
+    }
+
     if (message.type === 'assistant' && 'uuid' in message) {
       lastAssistantUuid = (message as { uuid: string }).uuid;
     }
