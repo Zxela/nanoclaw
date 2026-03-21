@@ -18,16 +18,14 @@ const VAULT_GITIGNORE = `.obsidian/workspace.json
 .trash/
 `;
 
+export const OBSIDIAN_APP_CONFIG = {
+  livePreview: true,
+  showFrontmatter: true,
+  defaultViewMode: 'source',
+};
+
 const OBSIDIAN_CONFIG = {
-  'app.json': JSON.stringify(
-    {
-      livePreview: true,
-      showFrontmatter: true,
-      defaultViewMode: 'source',
-    },
-    null,
-    2,
-  ),
+  'app.json': JSON.stringify(OBSIDIAN_APP_CONFIG, null, 2),
 };
 
 export function initKnowledgeVault(groupFolder: string): string {
