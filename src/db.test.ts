@@ -196,15 +196,15 @@ describe('getMessagesSince', () => {
     });
   });
 
-  it('returns messages after the given timestamp', () => {
+  it('returns all unprocessed non-bot messages (timestamp param ignored)', () => {
     const msgs = getMessagesSince(
       'group@g.us',
       '2024-01-01T00:00:02.000Z',
       'Andy',
     );
-    // Should exclude m1, m2 (before/at timestamp), m3 (bot message)
-    expect(msgs).toHaveLength(1);
-    expect(msgs[0].content).toBe('third');
+    // getMessagesSince now delegates to getUnprocessedMessages, ignoring timestamp
+    // Returns all 3 non-bot unprocessed messages (m1, m2, m4)
+    expect(msgs).toHaveLength(3);
   });
 
   it('excludes bot messages via is_bot_message flag', () => {
@@ -238,7 +238,8 @@ describe('getMessagesSince', () => {
       '2024-01-01T00:00:04.000Z',
       'Andy',
     );
-    expect(msgs).toHaveLength(0);
+    // m5 is filtered by content prefix backstop, but m1, m2, m4 are still unprocessed
+    expect(msgs).toHaveLength(3);
   });
 });
 
