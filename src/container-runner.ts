@@ -447,7 +447,10 @@ export async function runContainerAgent(
       group: group.name,
       containerName,
       mountCount: mounts.length,
-      mounts: mounts.map(m => `${m.hostPath} -> ${m.containerPath} (${m.readonly ? 'ro' : 'rw'})`),
+      mounts: mounts.map(
+        (m) =>
+          `${m.hostPath} -> ${m.containerPath} (${m.readonly ? 'ro' : 'rw'})`,
+      ),
       isMain: input.isMain,
     },
     'Spawning container agent',
@@ -834,17 +837,47 @@ export function writeTasksSnapshot(
     next_run: string | null;
   }>,
 ): void {
-  // Write filtered tasks to the group's IPC directory
-  const groupIpcDir = resolveGroupIpcPath(groupFolder);
-  fs.mkdirSync(groupIpcDir, { recursive: true });
-
   // Main sees all tasks, others only see their own
   const filteredTasks = isMain
     ? tasks
     : tasks.filter((t) => t.groupFolder === groupFolder);
 
-  const tasksFile = path.join(groupIpcDir, 'current_tasks.json');
-  fs.writeFileSync(tasksFile, JSON.stringify(filteredTasks, null, 2));
+  const content = JSON.stringify(filteredTasks, null, 2);
+
+  // Write to the group-level IPC directory
+  const groupIpcDir = resolveGroupIpcPath(groupFolder);
+  fs.mkdirSync(groupIpcDir, { recursive: true });
+  fs.writeFileSync(path.join(groupIpcDir, 'current_tasks.json'), content);
+
+  // Also write to each thread-specific IPC subdirectory so threaded
+  // containers (which mount {groupIpcDir}/{threadId}/ as /workspace/ipc/)
+  // can see the snapshot via list_tasks.
+  try {
+    for (const entry of fs.readdirSync(groupIpcDir, { withFileTypes: true })) {
+      if (
+        entry.isDirectory() &&
+        ![
+          'messages',
+          'tasks',
+          'files',
+          'prs',
+          'input',
+          'debug',
+          'errors',
+          'audit',
+        ].includes(entry.name)
+      ) {
+        const threadFile = path.join(
+          groupIpcDir,
+          entry.name,
+          'current_tasks.json',
+        );
+        fs.writeFileSync(threadFile, content);
+      }
+    }
+  } catch {
+    // Best-effort — thread dirs may not exist yet
+  }
 }
 
 export interface AvailableGroup {
@@ -871,16 +904,40 @@ export function writeGroupsSnapshot(
   // Main sees all groups; others see nothing (they can't activate groups)
   const visibleGroups = isMain ? groups : [];
 
-  const groupsFile = path.join(groupIpcDir, 'available_groups.json');
-  fs.writeFileSync(
-    groupsFile,
-    JSON.stringify(
-      {
-        groups: visibleGroups,
-        lastSync: new Date().toISOString(),
-      },
-      null,
-      2,
-    ),
+  const content = JSON.stringify(
+    {
+      groups: visibleGroups,
+      lastSync: new Date().toISOString(),
+    },
+    null,
+    2,
   );
+
+  fs.writeFileSync(path.join(groupIpcDir, 'available_groups.json'), content);
+
+  // Also write to thread-specific IPC subdirectories
+  try {
+    for (const entry of fs.readdirSync(groupIpcDir, { withFileTypes: true })) {
+      if (
+        entry.isDirectory() &&
+        ![
+          'messages',
+          'tasks',
+          'files',
+          'prs',
+          'input',
+          'debug',
+          'errors',
+          'audit',
+        ].includes(entry.name)
+      ) {
+        fs.writeFileSync(
+          path.join(groupIpcDir, entry.name, 'available_groups.json'),
+          content,
+        );
+      }
+    }
+  } catch {
+    // Best-effort
+  }
 }
