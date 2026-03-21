@@ -67,7 +67,8 @@ import {
   loadSenderAllowlist,
   shouldDropMessage,
 } from './sender-allowlist.js';
-import { startPrWatcher } from './pr-watcher.js';
+import './features/index.js';
+import { activatePrWatcher } from './pr-watcher.js';
 import { startSchedulerLoop } from './task-scheduler.js';
 import { Channel, NewMessage, RegisteredGroup } from './types.js';
 import { logger } from './logger.js';
@@ -822,7 +823,7 @@ async function main(): Promise<void> {
       }
     },
   });
-  startPrWatcher({
+  activatePrWatcher({
     registeredGroups: () => registeredGroups,
     getSessions: () => sessions,
     queue,

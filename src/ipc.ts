@@ -12,12 +12,10 @@ import {
 } from './config.js';
 import { AvailableGroup } from './container-runner.js';
 import {
-  addWatchedPr,
   createTask,
   deleteTask,
   getTaskById,
   getThreadContextByThreadId,
-  unwatchPr,
   updateTask,
 } from './db.js';
 import { isValidGroupFolder } from './group-folder.js';
@@ -54,6 +52,22 @@ export interface IpcDeps {
     queryId: string,
     question: string,
   ) => void;
+}
+
+type ExternalIpcHandler = (
+  data: Record<string, unknown>,
+  sourceGroup: string,
+  isMain: boolean,
+  deps: IpcDeps,
+) => Promise<void>;
+
+const externalIpcHandlers = new Map<string, ExternalIpcHandler>();
+
+export function registerIpcHandler(
+  type: string,
+  handler: ExternalIpcHandler,
+): void {
+  externalIpcHandlers.set(type, handler);
 }
 
 /**
@@ -354,47 +368,6 @@ async function handleIpcFiles(
 }
 
 /**
- * Handle an IPC PR watch/unwatch request (type: 'watch_pr' or 'unwatch_pr').
- * Extracted from the prs/ directory scanning block.
- */
-async function handleIpcPr(
-  data: Record<string, unknown>,
-  sourceGroup: string,
-  isMain: boolean,
-  deps: IpcDeps,
-): Promise<void> {
-  if (data.type === 'watch_pr' && data.repo && data.pr_number) {
-    // Resolve chat_jid from sourceGroup
-    const groups = deps.registeredGroups();
-    const groupEntry = Object.entries(groups).find(
-      ([, g]) => g.folder === sourceGroup,
-    );
-    if (groupEntry) {
-      const [chatJid] = groupEntry;
-      addWatchedPr({
-        repo: data.repo as string,
-        pr_number: data.pr_number as number,
-        group_folder: sourceGroup,
-        chat_jid: chatJid,
-        source: (data.source as string) || 'manual',
-      });
-      logger.info(
-        { repo: data.repo, pr: data.pr_number, sourceGroup },
-        'PR watch added via IPC',
-      );
-    } else {
-      logger.warn({ sourceGroup }, 'Cannot watch PR: group not registered');
-    }
-  } else if (data.type === 'unwatch_pr' && data.repo && data.pr_number) {
-    unwatchPr(data.repo as string, data.pr_number as number);
-    logger.info(
-      { repo: data.repo, pr: data.pr_number, sourceGroup },
-      'PR unwatched via IPC',
-    );
-  }
-}
-
-/**
  * Unified dispatcher for IPC queue files.
  * Routes a parsed JSON payload to the appropriate handler based on its type.
  */
@@ -447,12 +420,17 @@ async function processQueueFile(
           deps,
         );
       break;
-    case 'watch_pr':
-    case 'unwatch_pr':
-      if (!threadId) await handleIpcPr(data, sourceGroup, isMain, deps);
-      break;
-    default:
-      logger.warn({ type: data.type, sourceGroup }, 'Unknown IPC message type');
+    default: {
+      const externalHandler = externalIpcHandlers.get(data.type as string);
+      if (externalHandler) {
+        await externalHandler(data, sourceGroup, isMain, deps);
+      } else {
+        logger.warn(
+          { type: data.type, sourceGroup },
+          'Unknown IPC message type',
+        );
+      }
+    }
   }
 }
 
@@ -677,48 +655,6 @@ export function startIpcWatcher(deps: IpcDeps): void {
             { err, sourceGroup, threadId },
             'Error reading IPC files directory',
           );
-        }
-
-        // --- Legacy prs/ directory (deprecated, use queue/) ---
-        if (!threadId) {
-          const prsDir = path.join(basePath, 'prs');
-          try {
-            if (fs.existsSync(prsDir)) {
-              const prFiles = fs
-                .readdirSync(prsDir)
-                .filter((f) => f.endsWith('.json'));
-              if (prFiles.length > 0) {
-                logger.warn(
-                  { sourceGroup, dir: 'prs' },
-                  'IPC file found in deprecated directory, migrate to queue/',
-                );
-              }
-              for (const file of prFiles) {
-                const filePath = path.join(prsDir, file);
-                try {
-                  const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-                  await handleIpcPr(data, sourceGroup, isMain, deps);
-                  fs.unlinkSync(filePath);
-                } catch (err) {
-                  logger.error(
-                    { file, sourceGroup, err },
-                    'Error processing IPC PR watch',
-                  );
-                  const errorDir = path.join(ipcBaseDir, 'errors');
-                  fs.mkdirSync(errorDir, { recursive: true });
-                  fs.renameSync(
-                    filePath,
-                    path.join(errorDir, `${sourceGroup}-${file}`),
-                  );
-                }
-              }
-            }
-          } catch (err) {
-            logger.error(
-              { err, sourceGroup },
-              'Error reading IPC prs directory',
-            );
-          }
         }
       }
     }

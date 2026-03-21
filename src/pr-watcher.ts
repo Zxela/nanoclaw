@@ -1,8 +1,14 @@
 import { ChildProcess, execSync } from 'child_process';
 
 import { PR_POLL_INTERVAL, TIMEZONE } from './config.js';
-import { getActiveWatchedPrs, updateWatchedPr } from './db.js';
+import {
+  addWatchedPr,
+  getActiveWatchedPrs,
+  unwatchPr,
+  updateWatchedPr,
+} from './db.js';
 import { GroupQueue } from './group-queue.js';
+import { registerIpcHandler } from './ipc.js';
 import { logger } from './logger.js';
 import { RegisteredGroup } from './types.js';
 import { ContainerOutput, runContainerAgent } from './container-runner.js';
@@ -284,7 +290,54 @@ export function startPrWatcher(deps: PrWatcherDeps): void {
   loop();
 }
 
+export function activatePrWatcher(deps: PrWatcherDeps): void {
+  try {
+    execSync('gh auth status', { stdio: 'ignore' });
+  } catch {
+    logger.info('PR watcher: gh CLI not authenticated, skipping');
+    return;
+  }
+  startPrWatcher(deps);
+}
+
 /** @internal - for tests only. */
 export function _resetPrWatcherForTests(): void {
   watcherRunning = false;
 }
+
+// Self-register IPC handlers for PR watch/unwatch
+registerIpcHandler('watch_pr', async (data, sourceGroup) => {
+  if (!data.repo || !data.pr_number) {
+    logger.warn(
+      { sourceGroup },
+      'Invalid watch_pr IPC: missing repo or pr_number',
+    );
+    return;
+  }
+  addWatchedPr({
+    repo: data.repo as string,
+    pr_number: data.pr_number as number,
+    group_folder: sourceGroup,
+    chat_jid: (data.chatJid as string) || '',
+    source: (data.source as string) || 'manual',
+  });
+  logger.info(
+    { repo: data.repo, pr: data.pr_number, sourceGroup },
+    'PR watch registered via IPC',
+  );
+});
+
+registerIpcHandler('unwatch_pr', async (data, sourceGroup) => {
+  if (!data.repo || !data.pr_number) {
+    logger.warn(
+      { sourceGroup },
+      'Invalid unwatch_pr IPC: missing repo or pr_number',
+    );
+    return;
+  }
+  unwatchPr(data.repo as string, data.pr_number as number);
+  logger.info(
+    { repo: data.repo, pr: data.pr_number, sourceGroup },
+    'PR unwatch via IPC',
+  );
+});
