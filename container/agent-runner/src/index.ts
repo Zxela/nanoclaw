@@ -608,8 +608,10 @@ async function runQuery(
     const msgType = message.type === 'system' ? `system/${(message as { subtype?: string }).subtype}` : message.type;
     log(`[msg #${messageCount}] type=${msgType}`);
 
-    if (message.type === 'assistant' && 'content' in message) {
-      const content = (message as any).content;
+    if (message.type === 'assistant') {
+      const msg = message as any;
+      // SDK assistant messages may use 'content' (raw API) or 'message.content' (wrapped)
+      const content = msg.content ?? msg.message?.content;
       if (Array.isArray(content)) {
         for (const block of content) {
           if (block.type === 'tool_use') {
