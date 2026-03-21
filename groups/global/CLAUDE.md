@@ -148,14 +148,14 @@ You have a persistent knowledge base at `/workspace/group/knowledge/`. Use it to
 ### When to save
 Only save things that would be **hard to re-derive** and **useful next time**:
 - A person's name, role, or preferences (not every message they send)
-- A decision or preference that affects future work ("Alex prefers dark mode", "we chose Postgres over Mongo")
+- A decision tied to a specific project/context ("NanoClaw: chose Postgres over Mongo because of X", not just "use Postgres")
 - A project's status or goal when it changes meaningfully
 - A useful link or reference someone shares
 
 **Don't save:** routine chit-chat, obvious facts, anything already in chat history.
 
 ### How to save
-- One concept per file, descriptive filename (e.g., `people/alex.md`, `decisions/use-postgres.md`)
+- One concept per file, descriptive filename (e.g., `people/alex.md`, `decisions/nanoclaw-postgres-over-mongo.md`)
 - Keep notes short — a few lines, not essays
 - Use simple YAML frontmatter: `title`, `updated`, `tags`
 - Use `[[wiki-links]]` to connect related notes
