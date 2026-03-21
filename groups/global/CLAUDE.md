@@ -214,7 +214,7 @@ You have a persistent knowledge base at `/workspace/group/knowledge/`. Use it to
 - Commit after changes
 
 ### At conversation start
-Scan `knowledge/projects/` for active work — this is your memory of what's going on.
+**Read your project briefs.** Run `ls knowledge/projects/` and read any active project files. This is your memory — without it you're starting blind. If the user mentions a project by name, check for a matching brief before asking them to explain it again.
 
 ### At conversation end
 Did you work on a project? **Update its file with current status and next steps.** Did you learn something new about a person, decision, or preference? Save it. If nothing stands out, skip it.
