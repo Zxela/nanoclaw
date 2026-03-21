@@ -175,6 +175,26 @@ You have a persistent knowledge base at `/workspace/group/knowledge/`. Use it to
   - Chose Vercel over AWS because of deploy speed (Mar 15)
   ```
 - Strike through completed user stories rather than deleting them — it shows progress
+- For projects with enough scope, also maintain a `projects/{name}/ROADMAP.md`:
+  ```
+  # Roadmap — Project Name
+
+  ## Done
+  - [x] Basic dashboard with stats (Mar 15)
+  - [x] CSV export (Mar 20)
+
+  ## In Progress
+  - [ ] Auth — invite team members via email
+
+  ## Planned
+  - [ ] Real-time WebSocket updates
+  - [ ] Mobile-responsive layout
+
+  ## Icebox
+  - [ ] SSO integration (nice to have, not urgent)
+  ```
+- Move items between sections as they progress — this is the single source of truth for "what's next"
+- The brief (`projects/{name}.md`) explains *what and why*; the roadmap tracks *where we are*
 - Update the brief each session you touch the project
 - Keep it scannable — someone should understand the project in 30 seconds
 
