@@ -19,16 +19,14 @@ const VAULT_GITIGNORE = `.obsidian/workspace.json
 .memory.db
 `;
 
+export const OBSIDIAN_APP_CONFIG = {
+  livePreview: true,
+  showFrontmatter: true,
+  defaultViewMode: 'source',
+};
+
 const OBSIDIAN_CONFIG: Record<string, string> = {
-  'app.json': JSON.stringify(
-    {
-      livePreview: true,
-      showFrontmatter: true,
-      defaultViewMode: 'source',
-    },
-    null,
-    2,
-  ),
+  'app.json': JSON.stringify(OBSIDIAN_APP_CONFIG, null, 2),
   'graph.json': JSON.stringify(
     {
       colorGroups: [
