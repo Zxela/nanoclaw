@@ -71,7 +71,6 @@ import { startPrWatcher } from './pr-watcher.js';
 import { startSchedulerLoop } from './task-scheduler.js';
 import { Channel, NewMessage, RegisteredGroup } from './types.js';
 import { logger } from './logger.js';
-import { syncUnifiedVault } from './unified-vault.js';
 
 // Re-export for backwards compatibility during refactor
 export { escapeXml, formatMessages } from './router.js';
@@ -690,8 +689,6 @@ async function main(): Promise<void> {
   initDatabase();
   logger.info('Database initialized');
   loadState();
-  syncUnifiedVault();
-  setInterval(syncUnifiedVault, 5 * 60 * 1000).unref();
   restoreRemoteControl();
 
   // Start credential proxy (containers route API calls through this)

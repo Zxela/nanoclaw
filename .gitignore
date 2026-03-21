@@ -43,7 +43,7 @@ groups/global/*
 container/skills-catalog/plugins/
 
 groups/*/knowledge/
-groups/_vault/
 
 agents-sdk-docs
 container/skills-catalog/catalog.json
+.claude/worktrees/
