@@ -49,7 +49,11 @@ export interface IpcDeps {
   /** Optional: set thread context on a channel before sending a threaded IPC message */
   setThreadContext?: (jid: string, threadId: string) => void;
   /** Optional: handle debug queries from external tools (e.g., /ask-agent skill) */
-  onDebugQuery?: (sourceGroup: string, queryId: string, question: string) => void;
+  onDebugQuery?: (
+    sourceGroup: string,
+    queryId: string,
+    question: string,
+  ) => void;
 }
 
 /**
@@ -786,7 +790,10 @@ export async function processTaskIpc(
           'Debug query forwarded via IPC',
         );
       } else if (!deps.onDebugQuery) {
-        logger.warn({ sourceGroup }, 'Debug query received but no handler registered');
+        logger.warn(
+          { sourceGroup },
+          'Debug query received but no handler registered',
+        );
       }
       break;
 

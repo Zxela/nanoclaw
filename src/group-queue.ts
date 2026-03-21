@@ -132,7 +132,9 @@ export class GroupQueue {
    * Get info about the first active non-task thread in a group.
    * Returns { threadId, groupFolder } or null if no active container.
    */
-  getActiveThreadInfo(groupJid: string): { threadId: string; groupFolder: string } | null {
+  getActiveThreadInfo(
+    groupJid: string,
+  ): { threadId: string; groupFolder: string } | null {
     for (const [key, thread] of this.threads) {
       if (
         key.startsWith(`${groupJid}:`) &&

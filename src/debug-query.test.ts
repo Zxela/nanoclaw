@@ -15,7 +15,10 @@ describe('debug-query IPC protocol', () => {
   });
 
   afterEach(() => {
-    fs.rmSync(path.join(DATA_DIR, 'ipc', testFolder), { recursive: true, force: true });
+    fs.rmSync(path.join(DATA_DIR, 'ipc', testFolder), {
+      recursive: true,
+      force: true,
+    });
   });
 
   it('pollForResponse resolves when response.json appears with matching id', async () => {
@@ -25,7 +28,12 @@ describe('debug-query IPC protocol', () => {
     setTimeout(() => {
       fs.writeFileSync(
         path.join(debugDir, 'response.json'),
-        JSON.stringify({ id: queryId, answer: 'All good', status: 'success', timestamp: Date.now() }),
+        JSON.stringify({
+          id: queryId,
+          answer: 'All good',
+          status: 'success',
+          timestamp: Date.now(),
+        }),
       );
     }, 100);
 
@@ -53,7 +61,12 @@ describe('debug-query IPC protocol', () => {
   it('ignores response.json with non-matching id', async () => {
     fs.writeFileSync(
       path.join(debugDir, 'response.json'),
-      JSON.stringify({ id: 'wrong-id', answer: 'Wrong', status: 'success', timestamp: Date.now() }),
+      JSON.stringify({
+        id: 'wrong-id',
+        answer: 'Wrong',
+        status: 'success',
+        timestamp: Date.now(),
+      }),
     );
 
     const responseFile = path.join(debugDir, 'response.json');
@@ -64,8 +77,14 @@ describe('debug-query IPC protocol', () => {
   it('cleanup removes files with matching id only', () => {
     const queryId = 'cleanup-test';
 
-    fs.writeFileSync(path.join(debugDir, 'query.json'), JSON.stringify({ id: queryId }));
-    fs.writeFileSync(path.join(debugDir, 'response.json'), JSON.stringify({ id: queryId }));
+    fs.writeFileSync(
+      path.join(debugDir, 'query.json'),
+      JSON.stringify({ id: queryId }),
+    );
+    fs.writeFileSync(
+      path.join(debugDir, 'response.json'),
+      JSON.stringify({ id: queryId }),
+    );
 
     for (const file of ['query.json', 'response.json']) {
       const filePath = path.join(debugDir, file);
@@ -83,7 +102,10 @@ describe('debug-query IPC protocol', () => {
     const queryId = 'cleanup-preserve';
     const otherId = 'other-query';
 
-    fs.writeFileSync(path.join(debugDir, 'query.json'), JSON.stringify({ id: otherId }));
+    fs.writeFileSync(
+      path.join(debugDir, 'query.json'),
+      JSON.stringify({ id: otherId }),
+    );
 
     const filePath = path.join(debugDir, 'query.json');
     const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
@@ -97,7 +119,11 @@ describe('debug-query IPC protocol', () => {
   it('concurrent query guard detects existing query.json', () => {
     fs.writeFileSync(
       path.join(debugDir, 'query.json'),
-      JSON.stringify({ id: 'existing', question: 'test', timestamp: Date.now() }),
+      JSON.stringify({
+        id: 'existing',
+        question: 'test',
+        timestamp: Date.now(),
+      }),
     );
 
     const queryFile = path.join(debugDir, 'query.json');
@@ -107,7 +133,9 @@ describe('debug-query IPC protocol', () => {
   it('abort signal stops polling', async () => {
     const abortSignal = { aborted: false };
 
-    setTimeout(() => { abortSignal.aborted = true; }, 100);
+    setTimeout(() => {
+      abortSignal.aborted = true;
+    }, 100);
 
     const start = Date.now();
     await new Promise<string>((resolve) => {
