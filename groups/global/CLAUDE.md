@@ -145,15 +145,24 @@ You have a persistent knowledge base at `/workspace/group/knowledge/`. Use it to
 - `decisions/` — key decisions and their rationale
 - `reference/` — facts, links, resources
 
-### How to Use
-- Read relevant notes at the start of each conversation for context
-- Create/update notes when you learn something worth remembering
-- Use `[[wiki-links]]` between related notes
-- Add YAML frontmatter with metadata (tags, dates, related people)
-- One concept per file with descriptive filenames (e.g., `people/alex-backend-lead.md`)
-- Never delete notes — mark outdated ones with `deprecated: true` in frontmatter
-- After creating or updating notes, commit changes with a descriptive message
-- If a git remote is configured, push after committing
+### When to save
+Only save things that would be **hard to re-derive** and **useful next time**:
+- A person's name, role, or preferences (not every message they send)
+- A decision or preference that affects future work ("Alex prefers dark mode", "we chose Postgres over Mongo")
+- A project's status or goal when it changes meaningfully
+- A useful link or reference someone shares
+
+**Don't save:** routine chit-chat, obvious facts, anything already in chat history.
+
+### How to save
+- One concept per file, descriptive filename (e.g., `people/alex.md`, `decisions/use-postgres.md`)
+- Keep notes short — a few lines, not essays
+- Use simple YAML frontmatter: `title`, `updated`, `tags`
+- Use `[[wiki-links]]` to connect related notes
+- Commit after changes
+
+### At conversation end
+Quick mental check — did you learn anything new about a **person**, **project**, **decision**, or **preference** that you'd want to remember next time? If yes, save it. If nothing stands out, skip it. Don't force it.
 
 ## Use Subagents for Complex Tasks
 
