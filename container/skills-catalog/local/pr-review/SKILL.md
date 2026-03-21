@@ -74,5 +74,5 @@ If you get a 403 or permission error when posting a review, the `GH_TOKEN` likel
 After reviewing, offer to watch the PR for follow-up changes:
 
 ```bash
-echo '{"type": "watch_pr", "repo": "{owner}/{repo}", "pr_number": {number}, "source": "manual"}' > /workspace/ipc/prs/watch_$(date +%s).json
+echo '{"type": "watch_pr", "repo": "{owner}/{repo}", "pr_number": {number}, "source": "manual"}' > /workspace/ipc/queue/watch_$(date +%s).json
 ```
