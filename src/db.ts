@@ -211,6 +211,13 @@ function createSchema(database: Database.Database): void {
     // by the cursor system before this migration
     database.exec('UPDATE messages SET processed = 1');
 
+    // Clean up stale cursor keys from router_state now that we use the processed flag
+    database
+      .prepare(
+        "DELETE FROM router_state WHERE key IN ('last_timestamp', 'last_agent_timestamp')",
+      )
+      .run();
+
     logger.info(
       'Migration: added processed column to messages, marked all existing as processed',
     );
