@@ -147,10 +147,36 @@ You have a persistent knowledge base at `/workspace/group/knowledge/`. Use it to
 
 ### What to save
 
-**Projects and work-in-progress (most important):**
-- When you work on a repo, deployment, or multi-session task, create/update `projects/{name}.md` with: what it is, repo URL, current status, what was done, what's next
-- Update the project file each session you touch it — this is how you remember where you left off
-- Example: `projects/stoke-dashboard.md` — "Vercel deployment, repo: github.com/..., last deployed Mar 20, pending: add auth"
+**Project briefs (most important):**
+- Every project gets a living brief at `projects/{name}.md` — treat these like lightweight PRDs
+- Structure:
+  ```
+  # Project Name
+  **Repo:** github.com/...
+  **Stack:** Next.js, Vercel, Postgres
+  **Status:** Active / On hold / Done
+  **Owner:** who asked for this
+
+  ## What it is
+  One paragraph — what problem this solves, who it's for.
+
+  ## User stories
+  - As a user, I can see my dashboard with real-time stats
+  - As an admin, I can invite team members
+  - ~As a user, I can export to CSV~ (done Mar 20)
+
+  ## Current state
+  What's working, what's deployed, what's broken.
+
+  ## Next up
+  What we'd work on next session.
+
+  ## Key decisions
+  - Chose Vercel over AWS because of deploy speed (Mar 15)
+  ```
+- Strike through completed user stories rather than deleting them — it shows progress
+- Update the brief each session you touch the project
+- Keep it scannable — someone should understand the project in 30 seconds
 
 **People** — name, role, preferences. One file per person, update when you learn more.
 
