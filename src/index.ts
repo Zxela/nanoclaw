@@ -33,13 +33,13 @@ import {
   getAllSessions,
   getAllTasks,
   getConversationContext,
-  getMessagesSince,
   getNewMessages,
   getRegisteredGroup,
-  getRouterState,
+  getUnprocessedMessages,
   initDatabase,
+  markMessagesProcessed,
+  markMessagesUnprocessed,
   setRegisteredGroup,
-  setRouterState,
   deleteSession,
   setSession,
   storeChatMetadata,
@@ -75,10 +75,8 @@ import { logger } from './logger.js';
 // Re-export for backwards compatibility during refactor
 export { escapeXml, formatMessages } from './router.js';
 
-let lastTimestamp = '';
 let sessions: Record<string, string> = {};
 let registeredGroups: Record<string, RegisteredGroup> = {};
-let lastAgentTimestamp: Record<string, string> = {};
 let messageLoopRunning = false;
 
 // In-memory map: message key → thread context ID (populated by onMessage, consumed by message loop)
@@ -88,25 +86,12 @@ const channels: Channel[] = [];
 const queue = new GroupQueue();
 
 function loadState(): void {
-  lastTimestamp = getRouterState('last_timestamp') || '';
-  const agentTs = getRouterState('last_agent_timestamp');
-  try {
-    lastAgentTimestamp = agentTs ? JSON.parse(agentTs) : {};
-  } catch {
-    logger.warn('Corrupted last_agent_timestamp in DB, resetting');
-    lastAgentTimestamp = {};
-  }
   sessions = getAllSessions();
   registeredGroups = getAllRegisteredGroups();
   logger.info(
     { groupCount: Object.keys(registeredGroups).length },
     'State loaded',
   );
-}
-
-function saveState(): void {
-  setRouterState('last_timestamp', lastTimestamp);
-  setRouterState('last_agent_timestamp', JSON.stringify(lastAgentTimestamp));
 }
 
 function registerGroup(jid: string, group: RegisteredGroup): void {
@@ -177,24 +162,30 @@ async function processGroupMessages(
 
   const isMainGroup = group.isMain === true;
 
-  const sinceTimestamp = lastAgentTimestamp[chatJid] || '';
-  const missedMessages = getMessagesSince(
-    chatJid,
-    sinceTimestamp,
-    ASSISTANT_NAME,
-  );
+  const missedMessages = getUnprocessedMessages(chatJid, ASSISTANT_NAME);
 
   if (missedMessages.length === 0) return true;
 
+  // Build message refs for marking processed/unprocessed
+  const messageRefs = missedMessages.map((m) => ({
+    id: m.id,
+    chat_jid: m.chat_jid,
+  }));
+
   // For non-main groups, check if trigger is required and present
-  if (!isMainGroup && group.requiresTrigger !== false) {
+  const needsTrigger = !isMainGroup && group.requiresTrigger !== false;
+  if (needsTrigger) {
     const allowlistCfg = loadSenderAllowlist();
     const hasTrigger = missedMessages.some(
       (m) =>
         TRIGGER_PATTERN.test(m.content.trim()) &&
         (m.is_from_me || isTriggerAllowed(chatJid, m.sender, allowlistCfg)),
     );
-    if (!hasTrigger) return true;
+    if (!hasTrigger) {
+      // No trigger found — mark all as processed to prevent hot loop
+      markMessagesProcessed(messageRefs);
+      return true;
+    }
   }
 
   // Look up thread context if threadId is provided
@@ -227,12 +218,9 @@ async function processGroupMessages(
     contextMessages.length > 0 ? contextMessages : undefined,
   );
 
-  // Advance cursor so the piping path in startMessageLoop won't re-fetch
-  // these messages. Save the old cursor so we can roll back on error.
-  const previousCursor = lastAgentTimestamp[chatJid] || '';
-  lastAgentTimestamp[chatJid] =
-    missedMessages[missedMessages.length - 1].timestamp;
-  saveState();
+  // Mark messages as processed BEFORE running the container to prevent
+  // a concurrent container from picking up the same messages.
+  markMessagesProcessed(messageRefs);
 
   logger.info(
     { group: group.name, messageCount: missedMessages.length, threadId },
@@ -325,21 +313,20 @@ async function processGroupMessages(
   }
 
   if (output === 'error' || hadError) {
-    // If we already sent output to the user, don't roll back the cursor —
+    // If we already sent output to the user, keep messages marked processed —
     // the user got their response and re-processing would send duplicates.
     if (outputSentToUser) {
       logger.warn(
         { group: group.name },
-        'Agent error after output was sent, skipping cursor rollback to prevent duplicates',
+        'Agent error after output was sent, keeping messages processed to prevent duplicates',
       );
       return true;
     }
-    // Roll back cursor so retries can re-process these messages
-    lastAgentTimestamp[chatJid] = previousCursor;
-    saveState();
+    // Roll back processed flag so retries can re-process these messages
+    markMessagesUnprocessed(messageRefs);
     logger.warn(
       { group: group.name },
-      'Agent error, rolled back message cursor for retry',
+      'Agent error, marked messages unprocessed for retry',
     );
     return false;
   }
@@ -490,18 +477,10 @@ async function startMessageLoop(): Promise<void> {
   while (true) {
     try {
       const jids = Object.keys(registeredGroups);
-      const { messages, newTimestamp } = getNewMessages(
-        jids,
-        lastTimestamp,
-        ASSISTANT_NAME,
-      );
+      const { messages } = getNewMessages(jids, ASSISTANT_NAME);
 
       if (messages.length > 0) {
         logger.info({ count: messages.length }, 'New messages');
-
-        // Advance the "seen" cursor for all messages immediately
-        lastTimestamp = newTimestamp;
-        saveState();
 
         // Deduplicate by group
         const messagesByGroup = new Map<string, NewMessage[]>();
@@ -539,7 +518,13 @@ async function startMessageLoop(): Promise<void> {
                 (m.is_from_me ||
                   isTriggerAllowed(chatJid, m.sender, allowlistCfg)),
             );
-            if (!hasTrigger) continue;
+            if (!hasTrigger) {
+              // Mark non-triggered messages as processed to prevent hot loop
+              markMessagesProcessed(
+                groupMessages.map((m) => ({ id: m.id, chat_jid: m.chat_jid })),
+              );
+              continue;
+            }
           }
 
           // Determine thread context from the triggering message
@@ -555,25 +540,23 @@ async function startMessageLoop(): Promise<void> {
             }
           }
 
-          // Pull all messages since lastAgentTimestamp so non-trigger
-          // context that accumulated between triggers is included.
-          const allPending = getMessagesSince(
-            chatJid,
-            lastAgentTimestamp[chatJid] || '',
-            ASSISTANT_NAME,
-          );
+          // Get all unprocessed messages so non-trigger context that
+          // accumulated between triggers is included.
+          const allPending = getUnprocessedMessages(chatJid, ASSISTANT_NAME);
           const messagesToSend =
             allPending.length > 0 ? allPending : groupMessages;
           const formatted = formatMessages(messagesToSend, TIMEZONE, channel);
+          const pipedMessageRefs = messagesToSend.map((m) => ({
+            id: m.id,
+            chat_jid: m.chat_jid,
+          }));
 
           if (threadId && queue.sendMessage(chatJid, threadId, formatted)) {
             logger.debug(
               { chatJid, threadId, count: messagesToSend.length },
               'Piped messages to active thread container',
             );
-            lastAgentTimestamp[chatJid] =
-              messagesToSend[messagesToSend.length - 1].timestamp;
-            saveState();
+            markMessagesProcessed(pipedMessageRefs);
             // Show typing indicator while the container processes the piped message
             channel
               .setTyping?.(chatJid, true)
@@ -585,9 +568,7 @@ async function startMessageLoop(): Promise<void> {
               { chatJid, count: messagesToSend.length },
               'Piped messages to active container',
             );
-            lastAgentTimestamp[chatJid] =
-              messagesToSend[messagesToSend.length - 1].timestamp;
-            saveState();
+            markMessagesProcessed(pipedMessageRefs);
             // Show typing indicator while the container processes the piped message
             channel
               .setTyping?.(chatJid, true)
@@ -608,24 +589,6 @@ async function startMessageLoop(): Promise<void> {
       logger.error({ err }, 'Error in message loop');
     }
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
-  }
-}
-
-/**
- * Startup recovery: check for unprocessed messages in registered groups.
- * Handles crash between advancing lastTimestamp and processing messages.
- */
-function recoverPendingMessages(): void {
-  for (const [chatJid, group] of Object.entries(registeredGroups)) {
-    const sinceTimestamp = lastAgentTimestamp[chatJid] || '';
-    const pending = getMessagesSince(chatJid, sinceTimestamp, ASSISTANT_NAME);
-    if (pending.length > 0) {
-      logger.info(
-        { group: group.name, pendingCount: pending.length },
-        'Recovery: found unprocessed messages',
-      );
-      queue.enqueueMessageCheck(chatJid);
-    }
   }
 }
 
@@ -959,7 +922,6 @@ async function main(): Promise<void> {
   queue.setProcessMessagesFn(async (groupJid: string, threadId?: string) => {
     return processGroupMessages(groupJid, threadId);
   });
-  recoverPendingMessages();
   startMessageLoop().catch((err) => {
     logger.fatal({ err }, 'Message loop crashed unexpectedly');
     process.exit(1);

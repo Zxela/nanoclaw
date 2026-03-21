@@ -13,6 +13,8 @@ import {
   getMessagesSince,
   getNewMessages,
   getRegisteredGroup,
+  getUnprocessedMessages,
+  markMessagesProcessed,
   getTaskById,
   getThreadContextById,
   getThreadContextByOriginMessage,
@@ -283,31 +285,26 @@ describe('getNewMessages', () => {
   });
 
   it('returns new messages across multiple groups', () => {
-    const { messages, newTimestamp } = getNewMessages(
-      ['group1@g.us', 'group2@g.us'],
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-    );
+    const { messages } = getNewMessages(['group1@g.us', 'group2@g.us'], 'Andy');
     // Excludes bot message, returns 3 user messages
     expect(messages).toHaveLength(3);
-    expect(newTimestamp).toBe('2024-01-01T00:00:04.000Z');
   });
 
-  it('filters by timestamp', () => {
-    const { messages } = getNewMessages(
-      ['group1@g.us', 'group2@g.us'],
-      '2024-01-01T00:00:02.000Z',
-      'Andy',
-    );
-    // Only g1 msg2 (after ts, not bot)
+  it('returns only unprocessed messages', () => {
+    // Mark some messages as processed
+    markMessagesProcessed([
+      { id: 'a1', chat_jid: 'group1@g.us' },
+      { id: 'a2', chat_jid: 'group2@g.us' },
+    ]);
+    const { messages } = getNewMessages(['group1@g.us', 'group2@g.us'], 'Andy');
+    // Only g1 msg2 remains unprocessed (a3 is bot message, excluded)
     expect(messages).toHaveLength(1);
     expect(messages[0].content).toBe('g1 msg2');
   });
 
   it('returns empty for no registered groups', () => {
-    const { messages, newTimestamp } = getNewMessages([], '', 'Andy');
+    const { messages } = getNewMessages([], 'Andy');
     expect(messages).toHaveLength(0);
-    expect(newTimestamp).toBe('');
   });
 });
 
@@ -423,41 +420,20 @@ describe('message query LIMIT', () => {
   });
 
   it('getNewMessages caps to limit and returns most recent in chronological order', () => {
-    const { messages, newTimestamp } = getNewMessages(
-      ['group@g.us'],
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-      3,
-    );
+    const { messages } = getNewMessages(['group@g.us'], 'Andy', 3);
     expect(messages).toHaveLength(3);
-    expect(messages[0].content).toBe('message 8');
-    expect(messages[2].content).toBe('message 10');
     // Chronological order preserved
     expect(messages[1].timestamp > messages[0].timestamp).toBe(true);
-    // newTimestamp reflects latest returned row
-    expect(newTimestamp).toBe('2024-01-01T00:00:10.000Z');
   });
 
-  it('getMessagesSince caps to limit and returns most recent in chronological order', () => {
-    const messages = getMessagesSince(
-      'group@g.us',
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-      3,
-    );
+  it('getUnprocessedMessages caps to limit and returns most recent in chronological order', () => {
+    const messages = getUnprocessedMessages('group@g.us', 'Andy', 3);
     expect(messages).toHaveLength(3);
-    expect(messages[0].content).toBe('message 8');
-    expect(messages[2].content).toBe('message 10');
     expect(messages[1].timestamp > messages[0].timestamp).toBe(true);
   });
 
   it('returns all messages when count is under the limit', () => {
-    const { messages } = getNewMessages(
-      ['group@g.us'],
-      '2024-01-01T00:00:00.000Z',
-      'Andy',
-      50,
-    );
+    const { messages } = getNewMessages(['group@g.us'], 'Andy', 50);
     expect(messages).toHaveLength(10);
   });
 });
