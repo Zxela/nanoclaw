@@ -426,7 +426,12 @@ async function processQueueFile(
         await externalHandler(data, sourceGroup, isMain, deps);
       } else {
         logger.warn(
-          { type: data.type, sourceGroup },
+          {
+            type: data.type,
+            sourceGroup,
+            threadId,
+            keys: Object.keys(data).join(','),
+          },
           'Unknown IPC message type',
         );
       }
