@@ -522,7 +522,7 @@
     {
       "name": "generate-image",
       "source": "local",
-      "description": "Generate images from text prompts using Google Gemini AI (Imagen 3 / gemini-2.0-flash). Use when asked to generate, create, draw, or make an image of something. Trigger phrases include \"generate an image of...\", \"create an image of...\", \"draw me...\", \"make an image of...\".",
+      "description": "Generate images from text prompts using Google Gemini AI (gemini-2.5-flash-image). Use when asked to generate, create, draw, or make an image of something. Trigger phrases include \"generate an image of...\", \"create an image of...\", \"draw me...\", \"make an image of...\".",
       "categories": [
         "general"
       ],

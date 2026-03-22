@@ -49,6 +49,8 @@ When running a fast-loop task, check these in order:
 
 Act immediately on anything found. Keep it quick — this should take under 2 minutes.
 
+**IMPORTANT — How to respond:** Your normal text output IS the response that gets sent to the chat. Do NOT use `mcp__nanoclaw__send_message` for your final response — just output text normally. If you have nothing to report, output a brief note wrapped in `<internal>` tags (e.g. `<internal>Nothing to act on.</internal>`) so nothing is sent to the chat.
+
 ## Think Loop — Deep (every 4 hours)
 
 When running a deep-loop task:
@@ -60,7 +62,7 @@ When running a deep-loop task:
    - Status of ongoing work (→ `knowledge/status/`)
 2. **Work through goals** — read `knowledge/goals.md`. Pick the highest priority incomplete goal and make progress. Update the file.
 3. **Compile digest** — summarize everything you did since the last check-in (see Digest Format below).
-4. **Post digest** — send via `mcp__nanoclaw__send_message`. If nothing happened, don't post.
+4. **Post digest** — output the digest as your normal response (it gets sent to chat automatically). If nothing happened, wrap your output in `<internal>` tags so nothing is sent.
 
 ## Feedback Loop Prevention
 
