@@ -9,6 +9,7 @@ import {
   writeTasksSnapshot,
 } from './container-runner.js';
 import {
+  deleteSession,
   getAllTasks,
   getDueTasks,
   getTaskById,
@@ -218,6 +219,20 @@ async function runTask(
 
     if (output.status === 'error') {
       error = output.error || 'Unknown error';
+
+      // If session expired/invalid, clear it so next run uses a fresh session
+      if (
+        sessionId &&
+        output.error?.includes('No conversation found with session ID')
+      ) {
+        logger.warn(
+          { taskId: task.id },
+          'Task session expired, clearing for next run',
+        );
+        const currentSessions = deps.getSessions();
+        delete currentSessions[task.group_folder];
+        deleteSession(task.group_folder);
+      }
     } else if (output.result) {
       // Result was already forwarded to the user via the streaming callback above
       result = output.result;

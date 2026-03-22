@@ -381,6 +381,9 @@ async function processQueueFile(
   deps: IpcDeps,
   registeredGroups: Record<string, RegisteredGroup>,
 ): Promise<void> {
+  // Skip non-IPC files (e.g. current_tasks.json, available_groups.json)
+  if (Array.isArray(data) || typeof data.type !== 'string') return;
+
   switch (data.type) {
     case 'message':
       await handleIpcMessage(
