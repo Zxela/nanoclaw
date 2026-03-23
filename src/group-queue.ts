@@ -171,6 +171,16 @@ export class GroupQueue {
     this.enqueueThreadMessageCheck(groupJid, 'default');
   }
 
+  getThreadPriority(groupJid: string, threadId: string): ContainerPriority {
+    const thread = this.threads.get(this.threadKey(groupJid, threadId));
+    return thread?.priority || 'interactive';
+  }
+
+  getGoalTimeoutMs(groupJid: string, threadId: string): number | undefined {
+    const thread = this.threads.get(this.threadKey(groupJid, threadId));
+    return thread?.goalTimeoutMs;
+  }
+
   /**
    * Main entry point: enqueue a message check for a specific thread.
    */
@@ -178,12 +188,14 @@ export class GroupQueue {
     groupJid: string,
     threadId: string,
     priority: ContainerPriority = 'interactive',
+    goalTimeoutMs?: number,
   ): void {
     if (this.shuttingDown) return;
 
     const group = this.getGroup(groupJid);
     const thread = this.getThread(groupJid, threadId);
     thread.priority = priority;
+    if (goalTimeoutMs !== undefined) thread.goalTimeoutMs = goalTimeoutMs;
 
     if (thread.active) {
       group.pendingMessages.set(threadId, true);

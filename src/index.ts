@@ -5,6 +5,8 @@ import {
   ASSISTANT_NAME,
   CREDENTIAL_PROXY_PORT,
   DATA_DIR,
+  GOAL_TIMEOUT_DEFAULT,
+  GOAL_TIMEOUT_MAX,
   IDLE_TIMEOUT,
   POLL_INTERVAL,
   TIMEZONE,
@@ -82,6 +84,11 @@ let messageLoopRunning = false;
 
 // In-memory map: message key → thread context ID (populated by onMessage, consumed by message loop)
 const messageThreadContext = new Map<string, number>();
+// In-memory map: message key → image attachments (populated by onMessage, consumed by processGroupMessages)
+const messageImages = new Map<
+  string,
+  { data: string; mediaType: string; name?: string }[]
+>();
 
 const channels: Channel[] = [];
 const queue = new GroupQueue();
@@ -161,11 +168,25 @@ async function processGroupMessages(
     return true;
   }
 
+  const priority = queue.getThreadPriority(chatJid, threadId || 'default');
+  const goalTimeoutMs = queue.getGoalTimeoutMs(chatJid, threadId || 'default');
+
   const isMainGroup = group.isMain === true;
 
   const missedMessages = getUnprocessedMessages(chatJid, ASSISTANT_NAME);
 
   if (missedMessages.length === 0) return true;
+
+  // Collect images from in-memory cache (they're not stored in DB)
+  const allImages: { data: string; mediaType: string; name?: string }[] = [];
+  for (const m of missedMessages) {
+    const key = `${m.id}:${m.chat_jid}`;
+    const imgs = messageImages.get(key);
+    if (imgs) {
+      allImages.push(...imgs);
+      messageImages.delete(key);
+    }
+  }
 
   // Build message refs for marking processed/unprocessed
   const messageRefs = missedMessages.map((m) => ({
@@ -268,6 +289,7 @@ async function processGroupMessages(
   let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
   const resetIdleTimer = () => {
+    if (priority === 'goal') return; // Goals don't idle out
     if (idleTimer) clearTimeout(idleTimer);
     idleTimer = setTimeout(() => {
       logger.debug(
@@ -288,11 +310,11 @@ async function processGroupMessages(
   let outputSentToUser = false;
 
   const threadSessionId = threadContext?.session_id || undefined;
-  const output = await runAgent(
+  const output = await runAgent({
     group,
     prompt,
     chatJid,
-    async (result) => {
+    onOutput: async (result) => {
       // Streaming output callback — called for each agent result
       if (result.result) {
         const raw =
@@ -336,10 +358,12 @@ async function processGroupMessages(
         });
       }
     },
-    false,
     threadId,
-    threadSessionId,
-  );
+    sessionOverride: threadSessionId,
+    images: allImages.length > 0 ? allImages : undefined,
+    priority,
+    goalTimeoutMs,
+  });
 
   await channel.setTyping?.(chatJid, false);
   if (idleTimer) clearTimeout(idleTimer);
@@ -370,15 +394,32 @@ async function processGroupMessages(
   return true;
 }
 
-async function runAgent(
-  group: RegisteredGroup,
-  prompt: string,
-  chatJid: string,
-  onOutput?: (output: ContainerOutput) => Promise<void>,
-  _retried = false,
-  threadId?: string,
-  sessionOverride?: string,
-): Promise<'success' | 'error'> {
+interface RunAgentOpts {
+  group: RegisteredGroup;
+  prompt: string;
+  chatJid: string;
+  onOutput?: (output: ContainerOutput) => Promise<void>;
+  retried?: boolean;
+  threadId?: string;
+  sessionOverride?: string;
+  images?: { data: string; mediaType: string; name?: string }[];
+  priority?: 'interactive' | 'goal' | 'scheduled';
+  goalTimeoutMs?: number;
+}
+
+async function runAgent(opts: RunAgentOpts): Promise<'success' | 'error'> {
+  const {
+    group,
+    prompt,
+    chatJid,
+    onOutput,
+    retried = false,
+    threadId,
+    sessionOverride,
+    images,
+    priority,
+    goalTimeoutMs,
+  } = opts;
   const isMain = group.isMain === true;
   const sessionId =
     sessionOverride !== undefined ? sessionOverride : sessions[group.folder];
@@ -427,12 +468,15 @@ async function runAgent(
       group,
       {
         prompt,
+        images: images?.length ? images : undefined,
         sessionId,
         groupFolder: group.folder,
         chatJid,
         isMain,
         assistantName: ASSISTANT_NAME,
         threadId,
+        priority,
+        goalTimeoutMs,
       },
       (proc, containerName) =>
         queue.registerProcess(
@@ -469,22 +513,18 @@ async function runAgent(
             updateThreadContext(ctx.id, { sessionId: null });
           }
         }
-        if (_retried) {
+        if (retried) {
           logger.error(
             { group: group.name },
             'Session expired again after retry, giving up',
           );
           return 'error';
         }
-        return runAgent(
-          group,
-          prompt,
-          chatJid,
-          onOutput,
-          true,
-          threadId,
-          undefined,
-        );
+        return runAgent({
+          ...opts,
+          retried: true,
+          sessionOverride: undefined,
+        });
       }
 
       logger.error(
@@ -563,6 +603,33 @@ async function startMessageLoop(): Promise<void> {
             }
           }
 
+          // Detect /goal prefix for autonomous goal containers
+          let priority: 'interactive' | 'goal' | 'scheduled' = 'interactive';
+          let goalTimeoutMs: number | undefined;
+          for (const msg of groupMessages) {
+            const goalMatch = msg.content
+              .trim()
+              .match(/^\/goal(?:\s+(\d+)([hm]))?\s*/i);
+            if (goalMatch) {
+              priority = 'goal';
+              if (goalMatch[1] && goalMatch[2]) {
+                const value = parseInt(goalMatch[1], 10);
+                const unit = goalMatch[2].toLowerCase();
+                goalTimeoutMs = Math.min(
+                  unit === 'h' ? value * 3600000 : value * 60000,
+                  GOAL_TIMEOUT_MAX,
+                );
+              } else {
+                goalTimeoutMs = GOAL_TIMEOUT_DEFAULT;
+              }
+              msg.content = msg.content.replace(
+                /^\/goal(?:\s+\d+[hm])?\s*/i,
+                '',
+              );
+              break;
+            }
+          }
+
           // Determine thread context from the triggering message
           let threadId: string | undefined;
           for (const msg of [...groupMessages].reverse()) {
@@ -617,7 +684,12 @@ async function startMessageLoop(): Promise<void> {
               { chatJid, threadId },
               'sendMessage returned false, enqueuing for new container',
             );
-            queue.enqueueThreadMessageCheck(chatJid, threadId || 'default');
+            queue.enqueueThreadMessageCheck(
+              chatJid,
+              threadId || 'default',
+              priority,
+              goalTimeoutMs,
+            );
           }
         }
       }
@@ -792,6 +864,9 @@ async function main(): Promise<void> {
           msg.thread_context_id,
         );
       }
+      if (msg.images?.length) {
+        messageImages.set(`${msg.id}:${msg.chat_jid}`, msg.images);
+      }
     },
     onChatMetadata: (
       chatJid: string,
@@ -935,6 +1010,25 @@ async function main(): Promise<void> {
       ).catch((err) =>
         logger.error({ err, sourceGroup, queryId }, 'Debug query failed'),
       );
+    },
+    onEscalateToGoal: (groupFolder, threadId) => {
+      for (const [jid, group] of Object.entries(registeredGroups)) {
+        if (group.folder === groupFolder) {
+          queue.escalateToGoal(jid, threadId);
+          break;
+        }
+      }
+    },
+    onContainerPaused: (groupFolder, threadId) => {
+      for (const [jid, group] of Object.entries(registeredGroups)) {
+        if (group.folder === groupFolder) {
+          queue.handlePausedNotification(jid, threadId);
+          break;
+        }
+      }
+    },
+    onContainerResumed: (_groupFolder, _threadId) => {
+      // No-op on host side — container handles its own resume
     },
   });
   queue.setProcessMessagesFn(async (groupJid: string, threadId?: string) => {
