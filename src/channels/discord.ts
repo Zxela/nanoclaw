@@ -7,7 +7,6 @@ import {
 } from 'discord.js';
 
 import { ASSISTANT_NAME, TRIGGER_PATTERN } from '../config.js';
-import { migrateThreadDirs } from '../container-runner.js';
 import {
   createThreadContext,
   getActiveThreadContexts,
@@ -23,6 +22,7 @@ import { registerChannel, ChannelOpts } from './registry.js';
 import {
   Channel,
   FileAttachment,
+  ImageAttachment,
   OnChatMetadata,
   OnInboundMessage,
   RegisteredGroup,
@@ -288,26 +288,64 @@ export class DiscordChannel implements Channel {
           threadContextId = ctx.id;
         }
 
-        // Handle attachments — store placeholders so the agent knows something was sent
+        // Handle attachments — download images as base64, describe others as text
+        const images: ImageAttachment[] = [];
         if (message.attachments.size > 0) {
-          const attachmentDescriptions = [...message.attachments.values()].map(
-            (att) => {
-              const contentType = att.contentType || '';
-              if (contentType.startsWith('image/')) {
-                return `[Image: ${att.name || 'image'}]`;
-              } else if (contentType.startsWith('video/')) {
-                return `[Video: ${att.name || 'video'}]`;
-              } else if (contentType.startsWith('audio/')) {
-                return `[Audio: ${att.name || 'audio'}]`;
-              } else {
-                return `[File: ${att.name || 'file'}]`;
+          const nonImageDescriptions: string[] = [];
+          for (const att of message.attachments.values()) {
+            const contentType = att.contentType || '';
+            if (contentType.startsWith('image/') && att.url) {
+              try {
+                const resp = await fetch(att.url);
+                if (resp.ok) {
+                  const buf = Buffer.from(await resp.arrayBuffer());
+                  images.push({
+                    data: buf.toString('base64'),
+                    mediaType: contentType.split(';')[0],
+                    name: att.name || undefined,
+                  });
+                }
+              } catch {
+                nonImageDescriptions.push(
+                  `[Image: ${att.name || 'image'} (download failed)]`,
+                );
               }
-            },
-          );
-          if (content) {
-            content = `${content}\n${attachmentDescriptions.join('\n')}`;
-          } else {
-            content = attachmentDescriptions.join('\n');
+            } else if (contentType.startsWith('video/')) {
+              nonImageDescriptions.push(`[Video: ${att.name || 'video'}]`);
+            } else if (contentType.startsWith('audio/')) {
+              nonImageDescriptions.push(`[Audio: ${att.name || 'audio'}]`);
+            } else {
+              nonImageDescriptions.push(`[File: ${att.name || 'file'}]`);
+            }
+          }
+          if (nonImageDescriptions.length > 0) {
+            content = content
+              ? `${content}\n${nonImageDescriptions.join('\n')}`
+              : nonImageDescriptions.join('\n');
+          }
+        }
+
+        // Detect image URLs in message text and download them
+        const imageUrlPattern =
+          /https?:\/\/\S+\.(?:png|jpg|jpeg|gif|webp)(?:\?\S*)?/gi;
+        const urlMatches = content.match(imageUrlPattern) || [];
+        for (const url of urlMatches.slice(0, 5)) {
+          // Cap at 5 URLs
+          try {
+            const resp = await fetch(url);
+            const ct = resp.headers.get('content-type') || '';
+            if (resp.ok && ct.startsWith('image/')) {
+              const buf = Buffer.from(await resp.arrayBuffer());
+              if (buf.length <= 10 * 1024 * 1024) {
+                // 10MB limit
+                images.push({
+                  data: buf.toString('base64'),
+                  mediaType: ct.split(';')[0],
+                });
+              }
+            }
+          } catch {
+            // URL not fetchable, leave as text
           }
         }
 
@@ -357,6 +395,7 @@ export class DiscordChannel implements Channel {
           timestamp,
           is_from_me: false,
           thread_context_id: threadContextId,
+          images: images.length > 0 ? images : undefined,
         });
 
         logger.info(
@@ -462,15 +501,6 @@ export class DiscordChannel implements Channel {
           });
           // Update the thread context with the actual Discord thread ID
           updateThreadContext(triggerInfo.contextId, { threadId: thread.id });
-          // Migrate session/IPC dirs from pending-{id} to real thread ID
-          const group = this.opts.registeredGroups()[jid];
-          if (group) {
-            migrateThreadDirs(
-              group.folder,
-              `pending-${triggerInfo.contextId}`,
-              thread.id,
-            );
-          }
           // Update in-memory send target so subsequent streaming outputs go to this thread
           for (const [key, ctx] of this.currentSendTarget) {
             if (key.startsWith(`${jid}:`)) {

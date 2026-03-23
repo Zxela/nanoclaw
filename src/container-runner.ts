@@ -133,36 +133,6 @@ interface VolumeMount {
   readonly: boolean;
 }
 
-/**
- * Rename session and IPC directories when a pending thread context
- * resolves to a real Discord thread ID, so the session is preserved.
- */
-export function migrateThreadDirs(
-  groupFolder: string,
-  oldThreadId: string,
-  newThreadId: string,
-): void {
-  const sessionOld = path.join(DATA_DIR, 'sessions', groupFolder, oldThreadId);
-  const sessionNew = path.join(DATA_DIR, 'sessions', groupFolder, newThreadId);
-  const ipcOld = path.join(DATA_DIR, 'ipc', groupFolder, oldThreadId);
-  const ipcNew = path.join(DATA_DIR, 'ipc', groupFolder, newThreadId);
-
-  for (const [src, dst] of [
-    [sessionOld, sessionNew],
-    [ipcOld, ipcNew],
-  ]) {
-    try {
-      if (fs.existsSync(src) && !fs.existsSync(dst)) {
-        fs.renameSync(src, dst);
-        logger.debug({ src, dst }, 'Migrated thread directory');
-      }
-    } catch (err) {
-      // Race between concurrent containers — safe to ignore
-      logger.debug({ src, dst, err }, 'Thread directory migration skipped');
-    }
-  }
-}
-
 export function buildVolumeMounts(
   group: RegisteredGroup,
   isMain: boolean,
