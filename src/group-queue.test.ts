@@ -716,6 +716,14 @@ describe('GroupQueue', () => {
     expect(() => queue.escalateToGoal('group1', 'thread1')).not.toThrow();
   });
 
+  it('getThreadPriority returns interactive by default', () => {
+    expect(queue.getThreadPriority('group1', 'thread1')).toBe('interactive');
+  });
+
+  it('getGoalTimeoutMs returns undefined by default', () => {
+    expect(queue.getGoalTimeoutMs('group1', 'thread1')).toBeUndefined();
+  });
+
   it('closeStdin writes to thread-specific path', async () => {
     const fs = await import('fs');
     let resolveProcess: () => void;
