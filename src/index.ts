@@ -71,6 +71,7 @@ import {
 } from './sender-allowlist.js';
 import './features/index.js';
 
+import { migrateSessionDirs } from './migrate-sessions.js';
 import { startSchedulerLoop } from './task-scheduler.js';
 import { Channel, NewMessage, RegisteredGroup } from './types.js';
 import { logger } from './logger.js';
@@ -768,6 +769,7 @@ async function main(): Promise<void> {
   ensureContainerSystemRunning();
   initDatabase();
   logger.info('Database initialized');
+  migrateSessionDirs();
   loadState();
   restoreRemoteControl();
 
