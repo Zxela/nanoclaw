@@ -44,26 +44,37 @@ trap cleanup EXIT
 
 cd "$PROJECT_ROOT"
 
-# Check for new commits without fetching objects
-LOCAL_HEAD=$(git rev-parse HEAD)
+# Fetch latest remote state
+git fetch "$REMOTE" "$BRANCH" --quiet 2>/dev/null || {
+  log "ERROR: Could not reach remote"
+  exit 1
+}
+
+# Compare our last-deployed state against what the remote has.
+# Use the remote tracking ref (origin/main) — NOT local HEAD.
+# This avoids false triggers when local has unpushed commits.
+DEPLOYED_HEAD=$(git rev-parse "${REMOTE}/${BRANCH}")
 REMOTE_HEAD=$(git ls-remote "$REMOTE" "refs/heads/$BRANCH" | cut -f1)
 
 if [ -z "$REMOTE_HEAD" ]; then
-  log "ERROR: Could not reach remote"
+  log "ERROR: Could not read remote HEAD"
   exit 1
 fi
 
-if [ "$LOCAL_HEAD" = "$REMOTE_HEAD" ]; then
-  # No changes, exit silently
+if [ "$DEPLOYED_HEAD" = "$REMOTE_HEAD" ]; then
+  # Remote tracking ref matches remote — nothing new to deploy
   exit 0
 fi
 
-log "New commits detected: ${LOCAL_HEAD:0:7} -> ${REMOTE_HEAD:0:7}"
+# Check if remote has commits we haven't merged yet
+COMMIT_COUNT=$(git rev-list --count "${DEPLOYED_HEAD}..${REMOTE}/${BRANCH}" 2>/dev/null || echo "0")
+if [ "$COMMIT_COUNT" = "0" ]; then
+  # No new remote commits (local may be ahead, that's fine)
+  exit 0
+fi
 
-# Get commit summary for notification
-git fetch "$REMOTE" "$BRANCH" --quiet
-COMMIT_LOG=$(git log --oneline "${LOCAL_HEAD}..${REMOTE}/${BRANCH}" | head -10)
-COMMIT_COUNT=$(git rev-list --count "${LOCAL_HEAD}..${REMOTE}/${BRANCH}")
+COMMIT_LOG=$(git log --oneline "${DEPLOYED_HEAD}..${REMOTE}/${BRANCH}" | head -10)
+log "New commits detected: ${DEPLOYED_HEAD:0:7} -> ${REMOTE_HEAD:0:7} ($COMMIT_COUNT commit(s))"
 
 log "Pulling $COMMIT_COUNT new commit(s)"
 git pull "$REMOTE" "$BRANCH" --ff-only || {
