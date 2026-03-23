@@ -566,18 +566,35 @@ async function startMessageLoop(): Promise<void> {
       if (messages.length > 0) {
         logger.info({ count: messages.length }, 'New messages');
 
-        // Deduplicate by group
-        const messagesByGroup = new Map<string, NewMessage[]>();
+        // Group by (chatJid, threadContextId) — each thread-group is independent
+        const threadGroups = new Map<
+          string,
+          {
+            chatJid: string;
+            threadCtxId: number | undefined;
+            messages: NewMessage[];
+          }
+        >();
         for (const msg of messages) {
-          const existing = messagesByGroup.get(msg.chat_jid);
+          const threadKey = msg.thread_context_id
+            ? `${msg.chat_jid}:ctx-${msg.thread_context_id}`
+            : `${msg.chat_jid}:default`;
+          const existing = threadGroups.get(threadKey);
           if (existing) {
-            existing.push(msg);
+            existing.messages.push(msg);
           } else {
-            messagesByGroup.set(msg.chat_jid, [msg]);
+            threadGroups.set(threadKey, {
+              chatJid: msg.chat_jid,
+              threadCtxId: msg.thread_context_id ?? undefined,
+              messages: [msg],
+            });
           }
         }
 
-        for (const [chatJid, groupMessages] of messagesByGroup) {
+        for (const [
+          _key,
+          { chatJid, threadCtxId, messages: groupMessages },
+        ] of threadGroups) {
           const group = registeredGroups[chatJid];
           if (!group) continue;
 
@@ -588,30 +605,33 @@ async function startMessageLoop(): Promise<void> {
           }
 
           const isMainGroup = group.isMain === true;
-          const needsTrigger = !isMainGroup && group.requiresTrigger !== false;
+          const threadId = threadCtxId ? `ctx-${threadCtxId}` : 'default';
 
-          // For non-main groups, only act on trigger messages — unless
-          // there's an active container already handling this group, in
-          // which case follow-up messages should be forwarded via IPC
-          // without requiring a fresh trigger.
-          if (needsTrigger && !queue.isActive(chatJid)) {
-            const allowlistCfg = loadSenderAllowlist();
-            const hasTrigger = groupMessages.some(
-              (m) =>
-                TRIGGER_PATTERN.test(m.content.trim()) &&
-                (m.is_from_me ||
-                  isTriggerAllowed(chatJid, m.sender, allowlistCfg)),
-            );
-            if (!hasTrigger) {
-              // Mark non-triggered messages as processed to prevent hot loop
-              markMessagesProcessed(
-                groupMessages.map((m) => ({ id: m.id, chat_jid: m.chat_jid })),
+          // Trigger check: thread messages skip (already have context),
+          // non-thread messages need trigger unless main group or container active
+          const needsTrigger = !isMainGroup && group.requiresTrigger !== false;
+          if (needsTrigger && !threadCtxId) {
+            if (!queue.isActive(chatJid, threadId)) {
+              const allowlistCfg = loadSenderAllowlist();
+              const hasTrigger = groupMessages.some(
+                (m) =>
+                  TRIGGER_PATTERN.test(m.content.trim()) &&
+                  (m.is_from_me ||
+                    isTriggerAllowed(chatJid, m.sender, allowlistCfg)),
               );
-              continue;
+              if (!hasTrigger) {
+                markMessagesProcessed(
+                  groupMessages.map((m) => ({
+                    id: m.id,
+                    chat_jid: m.chat_jid,
+                  })),
+                );
+                continue;
+              }
             }
           }
 
-          // Detect /goal prefix for autonomous goal containers
+          // Detect /goal prefix
           let priority: 'interactive' | 'goal' | 'scheduled' = 'interactive';
           let goalTimeoutMs: number | undefined;
           for (const msg of groupMessages) {
@@ -638,59 +658,39 @@ async function startMessageLoop(): Promise<void> {
             }
           }
 
-          // Determine thread context from the triggering message (read from DB-persisted field)
-          let threadId: string | undefined;
-          for (const msg of [...groupMessages].reverse()) {
-            if (msg.thread_context_id) {
-              threadId = `ctx-${msg.thread_context_id}`;
-              break;
-            }
-          }
-
-          // Get all unprocessed messages so non-trigger context that
-          // accumulated between triggers is included.
+          // Try IPC to active container for this specific thread
           const allPending = getUnprocessedMessages(chatJid, ASSISTANT_NAME);
+          // Filter to this thread's messages only
+          const threadPending = threadCtxId
+            ? allPending.filter((m) => m.thread_context_id === threadCtxId)
+            : allPending.filter((m) => !m.thread_context_id);
           const messagesToSend =
-            allPending.length > 0 ? allPending : groupMessages;
+            threadPending.length > 0 ? threadPending : groupMessages;
           const formatted = formatMessages(messagesToSend, TIMEZONE, channel);
           const pipedMessageRefs = messagesToSend.map((m) => ({
             id: m.id,
             chat_jid: m.chat_jid,
           }));
 
-          if (threadId && queue.sendMessage(chatJid, threadId, formatted)) {
+          if (queue.sendMessage(chatJid, threadId, formatted)) {
             logger.debug(
               { chatJid, threadId, count: messagesToSend.length },
-              'Piped messages to active thread container',
-            );
-            markMessagesProcessed(pipedMessageRefs);
-            // Show typing indicator while the container processes the piped message
-            channel
-              .setTyping?.(chatJid, true)
-              ?.catch((err) =>
-                logger.warn({ chatJid, err }, 'Failed to set typing indicator'),
-              );
-          } else if (!threadId && queue.sendMessage(chatJid, formatted)) {
-            logger.debug(
-              { chatJid, count: messagesToSend.length },
               'Piped messages to active container',
             );
             markMessagesProcessed(pipedMessageRefs);
-            // Show typing indicator while the container processes the piped message
             channel
               .setTyping?.(chatJid, true)
               ?.catch((err) =>
                 logger.warn({ chatJid, err }, 'Failed to set typing indicator'),
               );
           } else {
-            // No active container or IPC rejected — enqueue for processing
             logger.info(
               { chatJid, threadId },
-              'sendMessage returned false, enqueuing for new container',
+              'No active container, enqueuing for new container',
             );
             queue.enqueueThreadMessageCheck(
               chatJid,
-              threadId || 'default',
+              threadId,
               priority,
               goalTimeoutMs,
             );
