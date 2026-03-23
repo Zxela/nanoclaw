@@ -1,6 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import { _initTestDatabase, getAllChats, storeChatMetadata } from './db.js';
+import {
+  _initTestDatabase,
+  getAllChats,
+  storeChatMetadata,
+  storeMessage,
+  getNewMessages,
+  getUnprocessedMessages,
+  markMessagesProcessed,
+} from './db.js';
 import { getAvailableGroups, _setRegisteredGroups } from './index.js';
 
 beforeEach(() => {
@@ -166,5 +174,111 @@ describe('getAvailableGroups', () => {
   it('returns empty array when no chats exist', () => {
     const groups = getAvailableGroups();
     expect(groups).toHaveLength(0);
+  });
+});
+
+describe('thread_context_id persistence', () => {
+  it('storeMessage persists thread_context_id and getUnprocessedMessages returns it', () => {
+    storeChatMetadata(
+      'dc:123',
+      '2024-01-01T00:00:00.000Z',
+      'Test',
+      'discord',
+      true,
+    );
+    storeMessage({
+      id: 'msg-1',
+      chat_jid: 'dc:123',
+      sender: 'user1',
+      sender_name: 'User',
+      content: '@Andy hello',
+      timestamp: '2024-01-01T00:00:01.000Z',
+      is_from_me: false,
+      thread_context_id: 42,
+    });
+
+    const msgs = getUnprocessedMessages('dc:123', 'Andy');
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0].thread_context_id).toBe(42);
+  });
+
+  it('storeMessage works without thread_context_id', () => {
+    storeChatMetadata(
+      'dc:123',
+      '2024-01-01T00:00:00.000Z',
+      'Test',
+      'discord',
+      true,
+    );
+    storeMessage({
+      id: 'msg-2',
+      chat_jid: 'dc:123',
+      sender: 'user1',
+      sender_name: 'User',
+      content: '@Andy hello',
+      timestamp: '2024-01-01T00:00:01.000Z',
+      is_from_me: false,
+    });
+
+    const msgs = getUnprocessedMessages('dc:123', 'Andy');
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0].thread_context_id).toBeNull();
+  });
+});
+
+describe('message thread grouping from DB', () => {
+  it('getNewMessages returns thread_context_id for grouping', () => {
+    storeChatMetadata(
+      'dc:123',
+      '2024-01-01T00:00:00.000Z',
+      'Test',
+      'discord',
+      true,
+    );
+    storeMessage({
+      id: 'msg-a',
+      chat_jid: 'dc:123',
+      sender: 'user1',
+      sender_name: 'User',
+      content: '@Andy hello from thread 1',
+      timestamp: '2024-01-01T00:00:01.000Z',
+      is_from_me: false,
+      thread_context_id: 10,
+    });
+    storeMessage({
+      id: 'msg-b',
+      chat_jid: 'dc:123',
+      sender: 'user2',
+      sender_name: 'User2',
+      content: '@Andy hello from thread 2',
+      timestamp: '2024-01-01T00:00:02.000Z',
+      is_from_me: false,
+      thread_context_id: 20,
+    });
+    storeMessage({
+      id: 'msg-c',
+      chat_jid: 'dc:123',
+      sender: 'user3',
+      sender_name: 'User3',
+      content: '@Andy hello no thread',
+      timestamp: '2024-01-01T00:00:03.000Z',
+      is_from_me: false,
+    });
+
+    const { messages } = getNewMessages(['dc:123'], 'Andy');
+    expect(messages).toHaveLength(3);
+
+    const byThread = new Map<string, typeof messages>();
+    for (const m of messages) {
+      const key = `${m.chat_jid}:${m.thread_context_id ?? 'default'}`;
+      const existing = byThread.get(key) || [];
+      existing.push(m);
+      byThread.set(key, existing);
+    }
+
+    expect(byThread.size).toBe(3);
+    expect(byThread.has('dc:123:10')).toBe(true);
+    expect(byThread.has('dc:123:20')).toBe(true);
+    expect(byThread.has('dc:123:default')).toBe(true);
   });
 });

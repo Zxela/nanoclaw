@@ -43,6 +43,7 @@ function createSchema(database: Database.Database): void {
       timestamp TEXT,
       is_from_me INTEGER,
       is_bot_message INTEGER DEFAULT 0,
+      thread_context_id INTEGER,
       PRIMARY KEY (id, chat_jid),
       FOREIGN KEY (chat_jid) REFERENCES chats(jid)
     );
@@ -223,6 +224,12 @@ function createSchema(database: Database.Database): void {
     );
   }
 
+  // Migration: Add thread_context_id to messages table
+  if (!columnExists(database, 'messages', 'thread_context_id')) {
+    database.exec('ALTER TABLE messages ADD COLUMN thread_context_id INTEGER');
+    logger.info('Migration: added thread_context_id column to messages');
+  }
+
   // Migrate active_threads → thread_contexts
   try {
     const hasActiveThreads = database
@@ -372,7 +379,7 @@ export function setLastGroupSync(): void {
  */
 export function storeMessage(msg: NewMessage): void {
   db.prepare(
-    `INSERT OR IGNORE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me, is_bot_message, processed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR IGNORE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me, is_bot_message, processed, thread_context_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     msg.id,
     msg.chat_jid,
@@ -383,6 +390,7 @@ export function storeMessage(msg: NewMessage): void {
     msg.is_from_me ? 1 : 0,
     msg.is_bot_message ? 1 : 0,
     msg.is_bot_message ? 1 : 0, // Bot messages are born processed
+    msg.thread_context_id ?? null,
   );
 }
 
@@ -466,7 +474,7 @@ export function getNewMessages(
   const placeholders = jids.map(() => '?').join(', ');
   const rows = db
     .prepare(
-      `SELECT id, chat_jid, sender, sender_name, content, timestamp, is_from_me
+      `SELECT id, chat_jid, sender, sender_name, content, timestamp, is_from_me, thread_context_id
        FROM messages
        WHERE processed = 0 AND chat_jid IN (${placeholders})
          AND is_bot_message = 0 AND content NOT LIKE ?
@@ -507,7 +515,7 @@ export function getUnprocessedMessages(
 ): NewMessage[] {
   return db
     .prepare(
-      `SELECT id, chat_jid, sender, sender_name, content, timestamp, is_from_me
+      `SELECT id, chat_jid, sender, sender_name, content, timestamp, is_from_me, thread_context_id
        FROM messages
        WHERE processed = 0 AND chat_jid = ?
          AND is_bot_message = 0 AND content NOT LIKE ?

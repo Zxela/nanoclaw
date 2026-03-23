@@ -43,6 +43,12 @@ export interface RegisteredGroup {
   skills?: string[]; // Category tags for skill pre-loading. Default: ["general", "coding"]
 }
 
+export interface ImageAttachment {
+  data: string; // base64-encoded image data
+  mediaType: string; // e.g. "image/png", "image/jpeg"
+  name?: string; // original filename
+}
+
 export interface NewMessage {
   id: string;
   chat_jid: string;
@@ -52,7 +58,8 @@ export interface NewMessage {
   timestamp: string;
   is_from_me?: boolean;
   is_bot_message?: boolean;
-  thread_context_id?: number; // Thread context ID (Discord only, not persisted to DB)
+  thread_context_id?: number; // Thread context ID — persisted in messages table
+  images?: ImageAttachment[]; // Image attachments (in-memory only, not persisted to DB)
 }
 
 export interface ScheduledTask {
