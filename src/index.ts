@@ -213,14 +213,19 @@ async function processGroupMessages(
   // Look up thread context if threadId is provided
   let threadContext: ThreadContext | undefined;
   if (threadId) {
-    // threadId could be a real Discord thread ID or 'pending-{contextId}'
-    if (threadId.startsWith('pending-')) {
-      const ctxId = parseInt(threadId.replace('pending-', ''), 10);
+    // threadId is now ctx-{id} format from the message loop
+    if (threadId.startsWith('ctx-')) {
+      const ctxId = parseInt(threadId.replace('ctx-', ''), 10);
       threadContext = getThreadContextById(ctxId);
     } else if (threadId !== 'default') {
       threadContext = getThreadContextByThreadId(threadId);
     }
   }
+
+  // Convert to stable ctx-{id} for filesystem paths and container identity
+  const containerThreadId = threadContext
+    ? `ctx-${threadContext.id}`
+    : threadId;
 
   // Use thread-specific session if available.
   // For new thread contexts (no session yet), start fresh — don't fall back
@@ -233,12 +238,12 @@ async function processGroupMessages(
   // to resume. If the file is missing (container killed, dir not migrated),
   // the SDK will fail with "No conversation found". Start fresh instead.
   if (sessionId) {
-    const sessionDir = threadId
+    const sessionDir = containerThreadId
       ? path.join(
           DATA_DIR,
           'sessions',
           group.folder,
-          threadId,
+          containerThreadId,
           '.claude',
           'projects',
           '-workspace-group',
@@ -296,13 +301,17 @@ async function processGroupMessages(
         { group: group.name },
         'Idle timeout, closing container stdin',
       );
-      queue.closeStdin(chatJid, threadId);
+      queue.closeStdin(chatJid, containerThreadId);
     }, IDLE_TIMEOUT);
   };
 
   // Set thread context on channel before streaming
-  if (threadContext && threadId) {
-    channel.setCurrentThreadContext?.(chatJid, threadId, threadContext);
+  if (threadContext && containerThreadId) {
+    channel.setCurrentThreadContext?.(
+      chatJid,
+      containerThreadId,
+      threadContext,
+    );
   }
 
   await channel.setTyping?.(chatJid, true);
@@ -344,7 +353,7 @@ async function processGroupMessages(
       }
 
       if (result.status === 'success') {
-        queue.notifyIdle(chatJid, threadId);
+        queue.notifyIdle(chatJid, containerThreadId);
       }
 
       if (result.status === 'error') {
@@ -358,7 +367,7 @@ async function processGroupMessages(
         });
       }
     },
-    threadId,
+    threadId: containerThreadId,
     sessionOverride: threadSessionId,
     images: allImages.length > 0 ? allImages : undefined,
     priority,
@@ -638,7 +647,7 @@ async function startMessageLoop(): Promise<void> {
             if (ctxId) {
               messageThreadContext.delete(ctxKey);
               const ctx = getThreadContextById(ctxId);
-              threadId = ctx?.thread_id ?? `pending-${ctxId}`;
+              threadId = `ctx-${ctxId}`;
               break;
             }
           }
