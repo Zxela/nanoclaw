@@ -685,6 +685,16 @@
       "path": "/skills-catalog/plugins/context-engineering-fundamentals/memory-systems"
     },
     {
+      "name": "market-data",
+      "source": "local",
+      "description": "Fetch real-time quotes, historical OHLCV, and fundamental metrics for stocks. Use when you need current prices, price history, or financial ratios for any ticker. Foundation skill for all stock analysis tasks.",
+      "categories": [
+        "finance",
+        "general"
+      ],
+      "path": "/skills-catalog/local/market-data"
+    },
+    {
       "name": "mesh-generation",
       "source": "local",
       "description": "Plan and evaluate mesh generation for numerical simulations. Use when choosing grid resolution, checking aspect ratios/skewness, estimating mesh quality constraints, or planning adaptive mesh refinement for PDE discretization.",
@@ -755,6 +765,15 @@
         "general"
       ],
       "path": "/skills-catalog/local/materials-simulation-skills/skills/core-numerical/nonlinear-solvers"
+    },
+    {
+      "name": "notion",
+      "source": "local",
+      "description": "Read and write Notion pages and databases. Use when asked to search Notion, read a page, create notes, update content, or query a database.",
+      "categories": [
+        "productivity",
+        "general"
+      ]
     },
     {
       "name": "numerical-integration",
@@ -1194,16 +1213,6 @@
         "creative"
       ],
       "path": "/skills-catalog/local/xlsx"
-    },
-    {
-      "name": "market-data",
-      "source": "local",
-      "description": "Fetch real-time quotes, historical OHLCV, and fundamental metrics for stocks. Use when you need current prices, price history, or financial ratios for any ticker. Foundation skill for all stock analysis tasks.",
-      "categories": [
-        "finance",
-        "general"
-      ],
-      "path": "/skills-catalog/local/market-data"
     }
   ]
 }
