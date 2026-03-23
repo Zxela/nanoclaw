@@ -15,6 +15,7 @@ interface QueuedTask {
   id: string;
   groupJid: string;
   fn: () => Promise<void>;
+  priority: ContainerPriority;
 }
 
 const MAX_RETRIES = 5;
@@ -235,7 +236,12 @@ export class GroupQueue {
     );
   }
 
-  enqueueTask(groupJid: string, taskId: string, fn: () => Promise<void>): void {
+  enqueueTask(
+    groupJid: string,
+    taskId: string,
+    fn: () => Promise<void>,
+    priority: ContainerPriority = 'scheduled',
+  ): void {
     if (this.shuttingDown) return;
 
     const group = this.getGroup(groupJid);
@@ -254,7 +260,7 @@ export class GroupQueue {
     const anyThreadActive = this.isAnyThreadActive(groupJid);
 
     if (anyThreadActive) {
-      group.pendingTasks.push({ id: taskId, groupJid, fn });
+      group.pendingTasks.push({ id: taskId, groupJid, fn, priority });
       // Preempt idle threads in the group
       this.preemptIdleThreads(groupJid);
       logger.debug({ groupJid, taskId }, 'Thread active, task queued');
@@ -262,7 +268,7 @@ export class GroupQueue {
     }
 
     if (this.activeCount >= MAX_CONCURRENT_CONTAINERS) {
-      group.pendingTasks.push({ id: taskId, groupJid, fn });
+      group.pendingTasks.push({ id: taskId, groupJid, fn, priority });
       if (!this.waitingGroups.includes(groupJid)) {
         this.waitingGroups.push(groupJid);
       }
@@ -274,8 +280,9 @@ export class GroupQueue {
     }
 
     // Run immediately
-    this.runTask(groupJid, { id: taskId, groupJid, fn }).catch((err) =>
-      logger.error({ groupJid, taskId, err }, 'Unhandled error in runTask'),
+    this.runTask(groupJid, { id: taskId, groupJid, fn, priority }).catch(
+      (err) =>
+        logger.error({ groupJid, taskId, err }, 'Unhandled error in runTask'),
     );
   }
 
@@ -486,6 +493,7 @@ export class GroupQueue {
     reason: 'messages' | 'drain',
   ): Promise<void> {
     const group = this.getGroup(groupJid);
+    const thread = this.getThread(groupJid, threadId);
 
     logger.debug(
       {
@@ -501,7 +509,7 @@ export class GroupQueue {
     await this.withContainer(
       groupJid,
       threadId,
-      { isTask: false },
+      { isTask: false, priority: thread.priority },
       async () => {
         if (this.processMessagesFn) {
           const success = await this.processMessagesFn(groupJid, threadId);
@@ -532,7 +540,7 @@ export class GroupQueue {
     await this.withContainer(
       groupJid,
       taskThreadId,
-      { isTask: true, taskId: task.id },
+      { isTask: true, taskId: task.id, priority: task.priority },
       async () => {
         await task.fn();
       },
