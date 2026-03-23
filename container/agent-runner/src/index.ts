@@ -69,6 +69,17 @@ interface SDKUserMessage {
   session_id: string;
 }
 
+const GOAL_SYSTEM_PROMPT = `
+You are working on an autonomous goal. Work independently to completion.
+
+- Break the goal into subtasks and use agent teams to parallelize when beneficial
+- For simple goals, just do the work directly without decomposition overhead
+- If you encounter a blocker you cannot resolve, report it via send_message and continue with other subtasks
+- If the user requested progress updates, use send_message at the requested interval
+- When complete, send final results via send_message
+- Do not ask clarifying questions unless truly stuck — make reasonable decisions and proceed
+`.trim();
+
 const IPC_INPUT_DIR = '/workspace/ipc/input';
 const IPC_INPUT_CLOSE_SENTINEL = path.join(IPC_INPUT_DIR, '_close');
 const IPC_INPUT_PAUSE_SENTINEL = path.join(IPC_INPUT_DIR, '_pause');
@@ -650,9 +661,13 @@ async function runQuery(
       additionalDirectories: extraDirs.length > 0 ? extraDirs : undefined,
       resume: sessionId,
       resumeSessionAt: resumeAt,
-      systemPrompt: globalClaudeMd
-        ? { type: 'preset' as const, preset: 'claude_code' as const, append: globalClaudeMd }
-        : undefined,
+      systemPrompt: (() => {
+        const isGoal = process.env.CONTAINER_PRIORITY === 'goal';
+        const appendText = [globalClaudeMd, isGoal ? GOAL_SYSTEM_PROMPT : ''].filter(Boolean).join('\n\n') || undefined;
+        return appendText
+          ? { type: 'preset' as const, preset: 'claude_code' as const, append: appendText }
+          : undefined;
+      })(),
       allowedTools: [
         'Bash',
         'Read', 'Write', 'Edit', 'Glob', 'Grep',
