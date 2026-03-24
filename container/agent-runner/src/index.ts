@@ -96,7 +96,8 @@ class MessageStream {
   private waiting: (() => void) | null = null;
   private done = false;
 
-  push(text: string, images?: ImageAttachment[]): void {
+  push(text: string, images?: ImageAttachment[]): boolean {
+    if (this.done) return false;
     let content: string | ContentBlock[];
     if (images && images.length > 0) {
       content = [
@@ -116,6 +117,7 @@ class MessageStream {
       session_id: '',
     });
     this.waiting?.();
+    return true;
   }
 
   end(): void {
@@ -743,6 +745,7 @@ async function runQuery(
   }
 
   ipcPolling = false;
+  stream.end(); // Prevent late IPC poll from pushing into the dead SDK transport
 
   // Drain any IPC messages that arrived after the SDK finished but before
   // we stopped polling. Without this, messages consumed by pollIpcDuringQuery
