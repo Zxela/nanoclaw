@@ -626,9 +626,14 @@ async function runQuery(
     const messages = drainIpcInput();
     for (const text of messages) {
       if (resultSeen) {
-        // SDK already delivered a result — don't push into dead transport
+        // SDK already delivered a result — don't push into dead transport.
+        // End the stream so the for-await loop exits and the main loop
+        // can feed these messages into the next query.
         log(`Collecting late IPC message (${text.length} chars) for next query`);
         lateMessages.push(text);
+        stream.end();
+        ipcPolling = false;
+        return;
       } else {
         log(`Piping IPC message into active query (${text.length} chars)`);
         if (!stream.push(text)) {
