@@ -763,11 +763,13 @@ async function runQuery(
         result: textResult || null,
         newSessionId
       });
+      // End the stream immediately so the SDK finishes its iterable.
+      // Late IPC messages will be collected by the poll callback (resultCount > 0 guard).
+      stream.end();
     }
   }
 
   ipcPolling = false;
-  stream.end(); // Prevent late IPC poll from pushing into the dead SDK transport
 
   // Drain any IPC messages that arrived after the SDK finished but before
   // we stopped polling. Without this, messages consumed by pollIpcDuringQuery
