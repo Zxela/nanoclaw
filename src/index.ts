@@ -434,6 +434,13 @@ async function runAgent(opts: RunAgentOpts): Promise<'success' | 'error'> {
   const sessionId =
     sessionOverride !== undefined ? sessionOverride : sessions[group.folder];
 
+  // Pre-create thread IPC dir so the snapshot propagation loop can find it.
+  // buildVolumeMounts creates this later, but writeTasksSnapshot needs it now.
+  if (threadId) {
+    const threadIpcDir = path.join(DATA_DIR, 'ipc', group.folder, threadId);
+    fs.mkdirSync(threadIpcDir, { recursive: true });
+  }
+
   // Update tasks snapshot for container to read (filtered by group)
   const tasks = getAllTasks();
   writeTasksSnapshot(
