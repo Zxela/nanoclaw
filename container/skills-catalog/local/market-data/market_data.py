@@ -14,7 +14,8 @@ import os
 import sys
 import json
 import argparse
-from datetime import datetime
+import urllib.parse
+from datetime import datetime, timezone
 
 
 def get_quote_finnhub(ticker: str) -> dict:
@@ -22,7 +23,7 @@ def get_quote_finnhub(ticker: str) -> dict:
     api_key = os.environ.get("FINNHUB_API_KEY", "")
     if not api_key:
         return {"error": "FINNHUB_API_KEY not set", "ticker": ticker}
-    url = f"https://finnhub.io/api/v1/quote?symbol={ticker}&token={api_key}"
+    url = f"https://finnhub.io/api/v1/quote?symbol={urllib.parse.quote(ticker)}&token={api_key}"
     try:
         with urllib.request.urlopen(url, timeout=10) as r:
             data = json.loads(r.read())
@@ -34,7 +35,7 @@ def get_quote_finnhub(ticker: str) -> dict:
             "low": data.get("l"),
             "prev_close": data.get("pc"),
             "change_pct": round((data["c"] - data["pc"]) / data["pc"] * 100, 2) if data.get("c") and data.get("pc") else None,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "source": "finnhub"
         }
     except Exception as e:
@@ -47,7 +48,7 @@ def get_quote_alpaca(ticker: str) -> dict:
     secret = os.environ.get("ALPACA_SECRET_KEY", "")
     if not key or not secret:
         return {"error": "ALPACA_API_KEY or ALPACA_SECRET_KEY not set", "ticker": ticker}
-    url = f"https://data.alpaca.markets/v2/stocks/{ticker}/quotes/latest"
+    url = f"https://data.alpaca.markets/v2/stocks/{urllib.parse.quote(ticker)}/quotes/latest"
     req = urllib.request.Request(url, headers={
         "APCA-API-KEY-ID": key,
         "APCA-API-SECRET-KEY": secret
@@ -111,7 +112,7 @@ def get_fundamentals_finnhub(ticker: str) -> dict:
         return {"error": "FINNHUB_API_KEY not set", "ticker": ticker}
     results = {"ticker": ticker, "source": "finnhub"}
     try:
-        url = f"https://finnhub.io/api/v1/stock/profile2?symbol={ticker}&token={api_key}"
+        url = f"https://finnhub.io/api/v1/stock/profile2?symbol={urllib.parse.quote(ticker)}&token={api_key}"
         with urllib.request.urlopen(url, timeout=10) as r:
             profile = json.loads(r.read())
         results.update({
@@ -124,7 +125,7 @@ def get_fundamentals_finnhub(ticker: str) -> dict:
     except Exception as e:
         results["profile_error"] = str(e)
     try:
-        url = f"https://finnhub.io/api/v1/stock/metric?symbol={ticker}&metric=all&token={api_key}"
+        url = f"https://finnhub.io/api/v1/stock/metric?symbol={urllib.parse.quote(ticker)}&metric=all&token={api_key}"
         with urllib.request.urlopen(url, timeout=10) as r:
             metrics = json.loads(r.read()).get("metric", {})
         results.update({

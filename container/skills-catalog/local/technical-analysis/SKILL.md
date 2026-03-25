@@ -13,9 +13,10 @@ Computes technical indicators from OHLCV data and returns actionable signals.
 
 **Install dependencies (first time):**
 ```bash
-pip install pandas pandas-ta --quiet
-# yfinance is already required by market-data skill
+pip install pandas yfinance --quiet
 ```
+
+> **Note:** Containers are ephemeral — this runs on first use (~10–15s cold start). All indicators are computed with raw pandas; no extra packages needed.
 
 ## Usage
 

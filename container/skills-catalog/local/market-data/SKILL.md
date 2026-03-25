@@ -20,6 +20,8 @@ ALPACA_SECRET_KEY=<secret>
 pip install yfinance --quiet
 ```
 
+> **Note:** Containers are ephemeral — this installs on first use (~10–15s cold start). `quote` and `fundamentals` commands use Finnhub/Alpaca (stdlib only, no install); only `history` and `batch` fallback require yfinance.
+
 ## Usage
 
 ```bash
