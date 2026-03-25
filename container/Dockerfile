@@ -26,12 +26,24 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install OpenSCAD for 3D modeling and xvfb for headless rendering
+# Install OpenSCAD for 3D modeling, xvfb for headless rendering, Python for skills
 RUN apt-get update && apt-get install -y \
     openscad \
     xvfb \
     zip \
+    python3 \
+    python3-pip \
+    python3-venv \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Python packages used by skills (avoids cold-start pip install per container)
+RUN pip install --break-system-packages --no-cache-dir \
+    yfinance \
+    pandas \
+    "markitdown[pptx]" \
+    Pillow \
+    defusedxml \
+    pypdf
 
 # Install GitHub CLI
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
