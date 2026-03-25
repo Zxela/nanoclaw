@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 market-data skill — unified market data fetcher
-Sources: Alpaca (real-time), Finnhub (quotes + fundamentals), yfinance (historical)
+Sources: Finnhub (quotes + fundamentals), yfinance (historical)
 
 Usage:
   python3 market_data.py quote AAPL
@@ -37,34 +37,6 @@ def get_quote_finnhub(ticker: str) -> dict:
             "change_pct": round((data["c"] - data["pc"]) / data["pc"] * 100, 2) if data.get("c") and data.get("pc") else None,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "source": "finnhub"
-        }
-    except Exception as e:
-        return {"error": str(e), "ticker": ticker}
-
-
-def get_quote_alpaca(ticker: str) -> dict:
-    import urllib.request
-    key = os.environ.get("ALPACA_API_KEY", "")
-    secret = os.environ.get("ALPACA_SECRET_KEY", "")
-    if not key or not secret:
-        return {"error": "ALPACA_API_KEY or ALPACA_SECRET_KEY not set", "ticker": ticker}
-    url = f"https://data.alpaca.markets/v2/stocks/{urllib.parse.quote(ticker)}/quotes/latest"
-    req = urllib.request.Request(url, headers={
-        "APCA-API-KEY-ID": key,
-        "APCA-API-SECRET-KEY": secret
-    })
-    try:
-        with urllib.request.urlopen(req, timeout=10) as r:
-            data = json.loads(r.read())
-        q = data.get("quote", {})
-        return {
-            "ticker": ticker,
-            "bid": q.get("bp"),
-            "ask": q.get("ap"),
-            "bid_size": q.get("bs"),
-            "ask_size": q.get("as"),
-            "timestamp": q.get("t"),
-            "source": "alpaca"
         }
     except Exception as e:
         return {"error": str(e), "ticker": ticker}
@@ -163,7 +135,6 @@ def main():
 
     p = sub.add_parser("quote")
     p.add_argument("ticker")
-    p.add_argument("--source", choices=["finnhub", "alpaca"], default="finnhub")
 
     p = sub.add_parser("history")
     p.add_argument("ticker")
@@ -178,7 +149,7 @@ def main():
     args = parser.parse_args()
 
     if args.command == "quote":
-        result = get_quote_alpaca(args.ticker) if args.source == "alpaca" else get_quote_finnhub(args.ticker)
+        result = get_quote_finnhub(args.ticker)
     elif args.command == "history":
         result = get_history_yfinance(args.ticker, args.days)
     elif args.command == "fundamentals":

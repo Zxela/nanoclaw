@@ -5,14 +5,12 @@ description: Fetch real-time quotes, historical OHLCV, and fundamental metrics f
 
 # Market Data Skill
 
-Unified interface for stock market data. Wraps Alpaca (real-time), Finnhub (quotes + fundamentals), and yfinance (historical OHLCV).
+Unified interface for stock market data. Wraps Finnhub (quotes + fundamentals) and yfinance (historical OHLCV).
 
-## Setup — Required env vars
+## Setup
 
 ```bash
-FINNHUB_API_KEY=<key>          # Free at finnhub.io — 60 calls/min
-ALPACA_API_KEY=<key>           # Free at alpaca.markets
-ALPACA_SECRET_KEY=<secret>
+FINNHUB_API_KEY=<key>          # Free at finnhub.io — 60 calls/min (optional — yfinance used as fallback)
 ```
 
 **Install dependencies (first time):**
@@ -20,7 +18,7 @@ ALPACA_SECRET_KEY=<secret>
 pip install yfinance --quiet
 ```
 
-> **Note:** Containers are ephemeral — this installs on first use (~10–15s cold start). `quote` and `fundamentals` commands use Finnhub/Alpaca (stdlib only, no install); only `history` and `batch` fallback require yfinance.
+> **Note:** Containers are ephemeral — this installs on first use (~10–15s cold start). `quote` and `fundamentals` commands use Finnhub (stdlib only, no install); `history` and `batch` fallback use yfinance.
 
 ## Usage
 
@@ -74,5 +72,4 @@ All commands return JSON. Check for `"error"` key before using results.
 | Source   | Free tier       |
 |----------|-----------------|
 | Finnhub  | 60 calls/min    |
-| Alpaca   | No limit (US stocks) |
 | yfinance | ~2 req/s recommended |
