@@ -87,6 +87,7 @@ const IPC_INPUT_DIR = '/workspace/ipc/input';
 const IPC_INPUT_CLOSE_SENTINEL = path.join(IPC_INPUT_DIR, '_close');
 const IPC_INPUT_PAUSE_SENTINEL = path.join(IPC_INPUT_DIR, '_pause');
 const IPC_INPUT_RESUME_SENTINEL = path.join(IPC_INPUT_DIR, '_resume');
+const IPC_INPUT_STOP_SENTINEL = path.join(IPC_INPUT_DIR, '_stop');
 const IPC_POLL_MS = 500;
 const IPC_PAUSE_POLL_MS = 5000;
 
@@ -481,6 +482,17 @@ function shouldClose(): boolean {
 }
 
 /**
+ * Check for _stop sentinel — immediate abort requested.
+ */
+function shouldStop(): boolean {
+  if (fs.existsSync(IPC_INPUT_STOP_SENTINEL)) {
+    try { fs.unlinkSync(IPC_INPUT_STOP_SENTINEL); } catch { /* ignore */ }
+    return true;
+  }
+  return false;
+}
+
+/**
  * Drain all pending IPC input messages.
  * Returns messages found, or empty array.
  */
@@ -553,6 +565,11 @@ function waitForIpcMessage(): Promise<string | null> {
         return;
       }
 
+      if (shouldStop()) {
+        resolve(null);
+        return;
+      }
+
       // Check for pause sentinel between turns
       const closedDuringPause = await checkAndHandlePause();
       if (closedDuringPause) {
@@ -583,6 +600,7 @@ async function runTurn(
   images: ImageAttachment[] | undefined,
   sdkEnv: Record<string, string | undefined>,
   resumeAt?: string,
+  abortController?: AbortController,
 ): Promise<{ newSessionId?: string; lastAssistantUuid?: string }> {
   const messageIterable = singleMessageIterable(prompt, images);
 
@@ -612,90 +630,104 @@ async function runTurn(
   let lastAssistantUuid: string | undefined;
   let messageCount = 0;
 
-  for await (const message of query({
-    prompt: messageIterable,
-    options: {
-      cwd: '/workspace/group',
-      additionalDirectories: extraDirs.length > 0 ? extraDirs : undefined,
-      resume: sessionId,
-      resumeSessionAt: resumeAt,
-      systemPrompt: (() => {
-        const isGoal = process.env.CONTAINER_PRIORITY === 'goal';
-        const appendText = [globalClaudeMd, isGoal ? GOAL_SYSTEM_PROMPT : ''].filter(Boolean).join('\n\n') || undefined;
-        return appendText
-          ? { type: 'preset' as const, preset: 'claude_code' as const, append: appendText }
-          : undefined;
-      })(),
-      allowedTools: [
-        'Bash',
-        'Read', 'Write', 'Edit', 'Glob', 'Grep',
-        'WebSearch', 'WebFetch',
-        'Task', 'TaskOutput', 'TaskStop',
-        'TeamCreate', 'TeamDelete', 'SendMessage',
-        'TodoWrite', 'ToolSearch', 'Skill',
-        'NotebookEdit',
-        'mcp__nanoclaw__*'
-      ],
-      env: sdkEnv,
-      permissionMode: 'bypassPermissions',
-      allowDangerouslySkipPermissions: true,
-      settingSources: ['project', 'user'],
-      mcpServers: {
-        nanoclaw: {
-          command: 'node',
-          args: [mcpServerPath],
-          env: {
-            NANOCLAW_CHAT_JID: containerInput.chatJid,
-            NANOCLAW_GROUP_FOLDER: containerInput.groupFolder,
-            NANOCLAW_IS_MAIN: containerInput.isMain ? '1' : '0',
+  // Watch for _stop sentinel to abort mid-turn
+  const stopWatcher = setInterval(() => {
+    if (shouldStop()) {
+      log('Stop sentinel detected, aborting query');
+      abortController?.abort();
+      clearInterval(stopWatcher);
+    }
+  }, 500);
+
+  try {
+    for await (const message of query({
+      prompt: messageIterable,
+      options: {
+        cwd: '/workspace/group',
+        additionalDirectories: extraDirs.length > 0 ? extraDirs : undefined,
+        resume: sessionId,
+        resumeSessionAt: resumeAt,
+        systemPrompt: (() => {
+          const isGoal = process.env.CONTAINER_PRIORITY === 'goal';
+          const appendText = [globalClaudeMd, isGoal ? GOAL_SYSTEM_PROMPT : ''].filter(Boolean).join('\n\n') || undefined;
+          return appendText
+            ? { type: 'preset' as const, preset: 'claude_code' as const, append: appendText }
+            : undefined;
+        })(),
+        allowedTools: [
+          'Bash',
+          'Read', 'Write', 'Edit', 'Glob', 'Grep',
+          'WebSearch', 'WebFetch',
+          'Task', 'TaskOutput', 'TaskStop',
+          'TeamCreate', 'TeamDelete', 'SendMessage',
+          'TodoWrite', 'ToolSearch', 'Skill',
+          'NotebookEdit',
+          'mcp__nanoclaw__*'
+        ],
+        env: sdkEnv,
+        permissionMode: 'bypassPermissions',
+        allowDangerouslySkipPermissions: true,
+        settingSources: ['project', 'user'],
+        abortController,
+        mcpServers: {
+          nanoclaw: {
+            command: 'node',
+            args: [mcpServerPath],
+            env: {
+              NANOCLAW_CHAT_JID: containerInput.chatJid,
+              NANOCLAW_GROUP_FOLDER: containerInput.groupFolder,
+              NANOCLAW_IS_MAIN: containerInput.isMain ? '1' : '0',
+            },
           },
         },
-      },
-      hooks: {
-        PreCompact: [{ hooks: [createPreCompactHook(containerInput.assistantName)] }],
-      },
-    }
-  })) {
-    messageCount++;
-    const msgType = message.type === 'system' ? `system/${(message as { subtype?: string }).subtype}` : message.type;
-    log(`[msg #${messageCount}] type=${msgType}`);
+        hooks: {
+          PreCompact: [{ hooks: [createPreCompactHook(containerInput.assistantName)] }],
+        },
+      }
+    })) {
+      messageCount++;
+      const msgType = message.type === 'system' ? `system/${(message as { subtype?: string }).subtype}` : message.type;
+      log(`[msg #${messageCount}] type=${msgType}`);
 
-    if (message.type === 'assistant') {
-      const msg = message as any;
-      const content = msg.content ?? msg.message?.content;
-      if (Array.isArray(content)) {
-        for (const block of content) {
-          if (block.type === 'tool_use') {
-            const inputStr = JSON.stringify(block.input).slice(0, 300);
-            log(`[tool] ${block.name} ${inputStr}`);
+      if (message.type === 'assistant') {
+        const msg = message as any;
+        const content = msg.content ?? msg.message?.content;
+        if (Array.isArray(content)) {
+          for (const block of content) {
+            if (block.type === 'tool_use') {
+              const inputStr = JSON.stringify(block.input).slice(0, 300);
+              log(`[tool] ${block.name} ${inputStr}`);
+            }
           }
         }
       }
-    }
 
-    if (message.type === 'assistant' && 'uuid' in message) {
-      lastAssistantUuid = (message as { uuid: string }).uuid;
-    }
+      if (message.type === 'assistant' && 'uuid' in message) {
+        lastAssistantUuid = (message as { uuid: string }).uuid;
+      }
 
-    if (message.type === 'system' && message.subtype === 'init') {
-      newSessionId = message.session_id;
-      log(`Session initialized: ${newSessionId}`);
-    }
+      if (message.type === 'system' && message.subtype === 'init') {
+        newSessionId = message.session_id;
+        log(`Session initialized: ${newSessionId}`);
+      }
 
-    if (message.type === 'system' && (message as { subtype?: string }).subtype === 'task_notification') {
-      const tn = message as { task_id: string; status: string; summary: string };
-      log(`Task notification: task=${tn.task_id} status=${tn.status} summary=${tn.summary}`);
-    }
+      if (message.type === 'system' && (message as { subtype?: string }).subtype === 'task_notification') {
+        const tn = message as { task_id: string; status: string; summary: string };
+        log(`Task notification: task=${tn.task_id} status=${tn.status} summary=${tn.summary}`);
+      }
 
-    if (message.type === 'result') {
-      const textResult = 'result' in message ? (message as { result?: string }).result : null;
-      log(`Result: subtype=${message.subtype}${textResult ? ` text=${textResult.slice(0, 200)}` : ''}`);
-      writeOutput({
-        status: 'success',
-        result: textResult || null,
-        newSessionId
-      });
+      if (message.type === 'result') {
+        const textResult = 'result' in message ? (message as { result?: string }).result : null;
+        log(`Result: subtype=${message.subtype}${textResult ? ` text=${textResult.slice(0, 200)}` : ''}`);
+        writeOutput({
+          status: 'success',
+          result: textResult || null,
+          newSessionId
+        });
+      }
     }
+  } finally {
+    clearInterval(stopWatcher);
   }
 
   log(`Turn done. Messages: ${messageCount}, lastAssistantUuid: ${lastAssistantUuid || 'none'}`);
@@ -743,6 +775,7 @@ async function main(): Promise<void> {
 
   // Clean up stale _close sentinel from previous container runs
   try { fs.unlinkSync(IPC_INPUT_CLOSE_SENTINEL); } catch { /* ignore */ }
+  try { fs.unlinkSync(IPC_INPUT_STOP_SENTINEL); } catch { /* ignore */ }
 
   // Build initial prompt (drain any pending IPC messages too)
   let prompt = containerInput.prompt;
@@ -763,8 +796,9 @@ async function main(): Promise<void> {
       log(`Starting turn (session: ${sessionId || 'new'}, resumeAt: ${resumeAt || 'latest'})...`);
 
       let turnResult: Awaited<ReturnType<typeof runTurn>>;
+      const abortController = new AbortController();
       try {
-        turnResult = await runTurn(prompt, sessionId, mcpServerPath, containerInput, initialImages, sdkEnv, resumeAt);
+        turnResult = await runTurn(prompt, sessionId, mcpServerPath, containerInput, initialImages, sdkEnv, resumeAt, abortController);
       } catch (queryErr) {
         const msg = queryErr instanceof Error ? queryErr.message : String(queryErr);
         const isStaleSession = msg.includes(SDK_ERR_SESSION_NOT_FOUND);
@@ -774,7 +808,7 @@ async function main(): Promise<void> {
           sessionId = undefined;
           resumeAt = undefined;
           initialImages = containerInput.images;
-          turnResult = await runTurn(prompt, undefined, mcpServerPath, containerInput, initialImages, sdkEnv, undefined);
+          turnResult = await runTurn(prompt, undefined, mcpServerPath, containerInput, initialImages, sdkEnv, undefined, new AbortController());
         } else {
           throw queryErr;
         }
@@ -784,6 +818,12 @@ async function main(): Promise<void> {
 
       if (turnResult.newSessionId) sessionId = turnResult.newSessionId;
       if (turnResult.lastAssistantUuid) resumeAt = turnResult.lastAssistantUuid;
+
+      // Check if stop was requested during or after the turn
+      if (shouldStop()) {
+        log('Stop sentinel detected after turn, exiting');
+        break;
+      }
 
       // Emit session update for host tracking
       writeOutput({ status: 'success', result: null, newSessionId: sessionId });
