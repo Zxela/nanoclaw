@@ -7,6 +7,7 @@ import {
   MAX_CONCURRENT_CONTAINERS,
   MAX_CONTAINERS_PER_GROUP,
 } from './config.js';
+import { stopContainerAsync } from './container-runtime.js';
 import { logger } from './logger.js';
 
 export type ContainerPriority = 'interactive' | 'goal' | 'scheduled';
@@ -440,6 +441,58 @@ export class GroupQueue {
     } catch {
       // ignore
     }
+  }
+
+  /**
+   * Immediately stop a container for a specific thread.
+   * Writes _stop sentinel for graceful SDK abort, then hard-kills after 5s.
+   */
+  stopContainer(
+    groupJid: string,
+    threadId: string = 'default',
+  ): { stopped: boolean } {
+    const thread = this.threads.get(this.threadKey(groupJid, threadId));
+    if (!thread?.active || !thread.groupFolder) {
+      return { stopped: false };
+    }
+
+    // Write _stop sentinel for agent-runner to detect
+    const inputDir = path.join(
+      DATA_DIR,
+      'ipc',
+      thread.groupFolder,
+      threadId,
+      'input',
+    );
+    try {
+      fs.mkdirSync(inputDir, { recursive: true });
+      fs.writeFileSync(path.join(inputDir, '_stop'), '');
+    } catch {
+      // ignore
+    }
+
+    // Hard-kill fallback after 5 seconds
+    const containerName = thread.containerName;
+    if (containerName) {
+      setTimeout(() => {
+        if (!thread.active || !thread.process) return;
+        logger.warn(
+          { groupJid, threadId, containerName },
+          'Stop grace period expired, hard-killing container',
+        );
+        stopContainerAsync(containerName, (err) => {
+          if (err) {
+            logger.warn(
+              { containerName, err },
+              'stopContainerAsync failed during /stop',
+            );
+          }
+        });
+      }, 5000).unref();
+    }
+
+    logger.info({ groupJid, threadId, containerName }, 'Stop requested');
+    return { stopped: true };
   }
 
   /**
