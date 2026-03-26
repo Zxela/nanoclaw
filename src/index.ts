@@ -832,6 +832,24 @@ async function main(): Promise<void> {
     }
   }
 
+  async function handleStop(chatJid: string, msg: NewMessage): Promise<void> {
+    const group = registeredGroups[chatJid];
+    if (!group) return;
+
+    const channel = findChannel(channels, chatJid);
+    if (!channel) return;
+
+    const threadId = msg.thread_context_id
+      ? `ctx-${msg.thread_context_id}`
+      : 'default';
+
+    const result = queue.stopContainer(chatJid, threadId);
+    const reply = result.stopped
+      ? 'Session stopped.'
+      : 'No active session to stop.';
+    await channel.sendMessage(chatJid, reply, msg.thread_context_id);
+  }
+
   // Channel callbacks (shared by all channels)
   const channelOpts = {
     onMessage: (chatJid: string, msg: NewMessage) => {
@@ -840,6 +858,14 @@ async function main(): Promise<void> {
       if (trimmed === '/remote-control' || trimmed === '/remote-control-end') {
         handleRemoteControl(trimmed, chatJid, msg).catch((err) =>
           logger.error({ err, chatJid }, 'Remote control command error'),
+        );
+        return;
+      }
+
+      // Stop command — intercept before storage
+      if (trimmed === '/stop') {
+        handleStop(chatJid, msg).catch((err) =>
+          logger.error({ err, chatJid }, 'Stop command error'),
         );
         return;
       }
