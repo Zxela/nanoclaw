@@ -67,6 +67,11 @@ import {
   loadSenderAllowlist,
   shouldDropMessage,
 } from './sender-allowlist.js';
+import {
+  extractSessionCommand,
+  handleSessionCommand,
+  isSessionCommandAllowed,
+} from './session-commands.js';
 import './features/index.js';
 
 import { migrateSessionDirs } from './migrate-sessions.js';
@@ -173,6 +178,59 @@ async function processGroupMessages(
   const missedMessages = getUnprocessedMessages(chatJid, ASSISTANT_NAME);
 
   if (missedMessages.length === 0) return true;
+
+  // --- Session command interception (before trigger/image processing) ---
+  // Skip for thread contexts — thread messages are already in an active session.
+  const isThreadContextEarly =
+    threadId !== undefined && threadId.startsWith('ctx-');
+  if (!isThreadContextEarly) {
+    const cmdResult = await handleSessionCommand({
+      missedMessages,
+      isMainGroup,
+      groupName: group.name,
+      triggerPattern: TRIGGER_PATTERN,
+      timezone: TIMEZONE,
+      deps: {
+        sendMessage: (text) => channel.sendMessage(chatJid, text),
+        setTyping: (typing) =>
+          channel.setTyping?.(chatJid, typing) ?? Promise.resolve(),
+        runAgent: async (prompt, onOutput) =>
+          runAgent({
+            group,
+            prompt,
+            chatJid,
+            onOutput: onOutput
+              ? async (output) =>
+                  onOutput({
+                    status: output.status,
+                    result: output.result ?? null,
+                  })
+              : undefined,
+          }),
+        closeStdin: () => queue.closeStdin(chatJid, 'default'),
+        advanceCursor: (ts) => {
+          const toMark = missedMessages
+            .filter((m) => m.timestamp <= ts)
+            .map((m) => ({ id: m.id, chat_jid: m.chat_jid }));
+          if (toMark.length > 0) markMessagesProcessed(toMark);
+        },
+        formatMessages,
+        canSenderInteract: (msg) => {
+          const hasTrigger = TRIGGER_PATTERN.test(msg.content.trim());
+          const reqTrigger = !isMainGroup && group.requiresTrigger !== false;
+          return (
+            isMainGroup ||
+            !reqTrigger ||
+            (hasTrigger &&
+              (msg.is_from_me ||
+                isTriggerAllowed(chatJid, msg.sender, loadSenderAllowlist())))
+          );
+        },
+      },
+    });
+    if (cmdResult.handled) return cmdResult.success;
+  }
+  // --- End session command interception ---
 
   // Collect images from in-memory cache (they're not stored in DB)
   const allImages: { data: string; mediaType: string; name?: string }[] = [];
@@ -590,6 +648,29 @@ async function startMessageLoop(): Promise<void> {
 
           const isMainGroup = group.isMain === true;
           const threadId = threadCtxId ? `ctx-${threadCtxId}` : 'default';
+
+          // --- Session command interception (message loop, non-thread only) ---
+          if (!threadCtxId) {
+            const loopCmdMsg = groupMessages.find(
+              (m) => extractSessionCommand(m.content, TRIGGER_PATTERN) !== null,
+            );
+            if (loopCmdMsg) {
+              // Only close active container if the sender is authorized — otherwise
+              // an untrusted user could kill in-flight work (DoS via /compact).
+              if (
+                isSessionCommandAllowed(
+                  isMainGroup,
+                  loopCmdMsg.is_from_me === true,
+                )
+              ) {
+                queue.closeStdin(chatJid, threadId);
+              }
+              // Enqueue so processGroupMessages handles auth + cursor advancement.
+              queue.enqueueMessageCheck(chatJid);
+              continue;
+            }
+          }
+          // --- End session command interception ---
 
           // Trigger check: thread messages skip (already have context),
           // non-thread messages need trigger unless main group or container active
