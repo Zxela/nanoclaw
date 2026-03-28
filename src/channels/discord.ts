@@ -9,12 +9,14 @@ import {
 import { ASSISTANT_NAME, TRIGGER_PATTERN } from '../config.js';
 import {
   createThreadContext,
+  getPendingThreadContexts,
   getThreadContextByThreadId,
   getThreadContextByOriginMessage,
   updateThreadContext,
   touchThreadContext,
   ThreadContext,
 } from '../db.js';
+import { IDLE_TIMEOUT } from '../config.js';
 import { readEnvFile } from '../env.js';
 import { logger } from '../logger.js';
 import { registerChannel, ChannelOpts } from './registry.js';
@@ -81,6 +83,44 @@ export class DiscordChannel implements Channel {
       this.currentSendTarget.set(key, context);
     } else {
       this.currentSendTarget.delete(key);
+    }
+  }
+
+  /**
+   * On startup, re-populate pendingTrigger from thread_contexts rows that have
+   * no thread_id yet (i.e. the bot received an @mention but hadn't replied before
+   * the last restart). Only looks back IDLE_TIMEOUT ms — older ones would have
+   * already timed out on the container side.
+   */
+  private async rehydratePendingTriggers(
+    readyClient: import('discord.js').Client<true>,
+  ): Promise<void> {
+    const cutoff = new Date(Date.now() - IDLE_TIMEOUT).toISOString();
+    const pending = getPendingThreadContexts(cutoff);
+    if (pending.length === 0) return;
+
+    let restored = 0;
+    for (const ctx of pending) {
+      if (!ctx.origin_message_id) continue;
+      const channelId = ctx.chat_jid.replace(/^dc:/, '');
+      try {
+        const channel = await readyClient.channels.fetch(channelId);
+        if (!channel || !('messages' in channel)) continue;
+        const msg = await (channel as TextChannel).messages.fetch(
+          ctx.origin_message_id,
+        );
+        this.pendingTrigger.set(ctx.id, { message: msg });
+        restored++;
+      } catch {
+        // Message may have been deleted or channel gone — skip silently
+      }
+    }
+
+    if (restored > 0) {
+      logger.info(
+        { restored, total: pending.length },
+        'Re-hydrated pendingTrigger from DB after restart',
+      );
     }
   }
 
@@ -420,7 +460,7 @@ export class DiscordChannel implements Channel {
     });
 
     return new Promise<void>((resolve) => {
-      this.client!.once(Events.ClientReady, (readyClient) => {
+      this.client!.once(Events.ClientReady, async (readyClient) => {
         logger.info(
           { username: readyClient.user.tag, id: readyClient.user.id },
           'Discord bot connected',
@@ -430,6 +470,7 @@ export class DiscordChannel implements Channel {
           `  Use /chatid command or check channel IDs in Discord settings\n`,
         );
         this.startHeartbeat();
+        await this.rehydratePendingTriggers(readyClient);
         resolve();
       });
 
