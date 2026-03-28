@@ -857,6 +857,18 @@ export function getActiveThreadContexts(
     .all(chatJid, cutoff) as ThreadContext[];
 }
 
+/**
+ * Get thread contexts that have no Discord thread yet (thread_id IS NULL),
+ * created after the given ISO cutoff. Used to re-hydrate pendingTrigger on restart.
+ */
+export function getPendingThreadContexts(cutoffIso: string): ThreadContext[] {
+  return db
+    .prepare(
+      'SELECT * FROM thread_contexts WHERE thread_id IS NULL AND created_at > ? ORDER BY created_at ASC',
+    )
+    .all(cutoffIso) as ThreadContext[];
+}
+
 // --- Watched PR accessors ---
 
 export interface WatchedPr {

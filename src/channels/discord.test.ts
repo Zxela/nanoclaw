@@ -12,6 +12,7 @@ vi.mock('../env.js', () => ({ readEnvFile: vi.fn(() => ({})) }));
 vi.mock('../config.js', () => ({
   ASSISTANT_NAME: 'Andy',
   TRIGGER_PATTERN: /^@Andy\b/i,
+  IDLE_TIMEOUT: 1800000,
 }));
 
 // Mock logger
@@ -37,6 +38,7 @@ vi.mock('../db.js', () => ({
     created_at: new Date().toISOString(),
     last_active_at: new Date().toISOString(),
   })),
+  getPendingThreadContexts: vi.fn().mockReturnValue([]),
   getThreadContextByThreadId: vi.fn().mockReturnValue(undefined),
   getThreadContextByOriginMessage: vi.fn().mockReturnValue(undefined),
   updateThreadContext: vi.fn(),
