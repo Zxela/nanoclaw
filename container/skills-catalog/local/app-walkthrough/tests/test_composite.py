@@ -120,8 +120,8 @@ def test_draw_callout_does_not_raise():
     draw = ImageDraw.Draw(img)
     theme = get_theme("dev")
     font = load_font(None, theme.callout_font_size)
-    draw_callout(draw, "Click the button", theme, [640, 400], 1280, 800, font)
-    draw_callout(draw, "Near top edge", theme, [100, 10], 1280, 800, font)
+    draw_callout(draw, "Click the button", theme, 1280, 800, font)
+    draw_callout(draw, "Near top edge", theme, 1280, 800, font)
 
 
 def test_apply_vignette_returns_same_size():

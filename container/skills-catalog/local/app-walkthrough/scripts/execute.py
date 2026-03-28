@@ -27,6 +27,9 @@ VIEWPORT_HEIGHT = 800
 CURSOR_MOVE_STEPS = 8      # frames of cursor animation per action
 FRAME_INTERVAL_MS = 67     # ~15fps
 SETTLE_FRAMES = 5          # frames captured after each action settles
+SPOTLIGHT_FRAMES = 6       # highlight frames before a click/type
+RIPPLE_FRAMES = 8          # ripple frames after a click
+SCENE_FRAMES = 30          # frames for a scene transition card
 
 # Map prose key names to Playwright key names
 KEY_MAP = {
@@ -40,18 +43,20 @@ KEY_MAP = {
 def take_screenshot(page, frames_dir: Path, frame_num: int,
                     cursor: list, keys: list,
                     step_index: int, step_label: str, step_action: str,
-                    metadata: list) -> int:
+                    metadata: list, **extra) -> int:
     """Capture one frame. Returns incremented frame_num."""
     filename = f"{frame_num:05d}.png"
     page.screenshot(path=str(frames_dir / filename))
-    metadata.append({
+    entry = {
         "frame": filename,
         "cursor": cursor[:],   # copy so mutations don't affect stored value
         "keys": keys[:],
         "step_index": step_index,
         "step_label": step_label,
         "step_action": step_action,
-    })
+    }
+    entry.update(extra)
+    metadata.append(entry)
     return frame_num + 1
 
 
@@ -125,6 +130,7 @@ def animate_cursor(page, frames_dir: Path, frame_num: int,
     """Interpolate cursor from current to target, capturing CURSOR_MOVE_STEPS frames."""
     for i in range(1, CURSOR_MOVE_STEPS + 1):
         t = i / CURSOR_MOVE_STEPS
+        t = t * t * (3 - 2 * t)
         interp = [
             int(cursor[0] + (target[0] - cursor[0]) * t),
             int(cursor[1] + (target[1] - cursor[1]) * t),
@@ -188,11 +194,25 @@ def execute_walkthrough(actions: list, frames_dir: Path, client: Anthropic,
                     page, frames_dir, frame_num, cursor, target,
                     step_idx, label, metadata,
                 )
+                # Spotlight pulse: cursor arrived, highlight the target
+                for i in range(SPOTLIGHT_FRAMES):
+                    frame_num = take_screenshot(
+                        page, frames_dir, frame_num, cursor, [],
+                        step_idx, label, "spotlight", metadata,
+                        spotlight_pos=cursor[:], spotlight_progress=(i + 1) / SPOTLIGHT_FRAMES,
+                    )
                 element.click()
                 try:
                     page.wait_for_load_state("networkidle", timeout=5000)
                 except Exception:
                     pass
+                # Click ripple animation
+                for i in range(RIPPLE_FRAMES):
+                    frame_num = take_screenshot(
+                        page, frames_dir, frame_num, cursor, [],
+                        step_idx, label, "ripple", metadata,
+                        ripple_center=cursor[:], ripple_progress=(i + 1) / RIPPLE_FRAMES,
+                    )
                 frame_num = settle(page, frames_dir, frame_num, cursor, [],
                                    step_idx, label, act, metadata, delay_ms)
 
@@ -203,6 +223,13 @@ def execute_walkthrough(actions: list, frames_dir: Path, client: Anthropic,
                     page, frames_dir, frame_num, cursor, target,
                     step_idx, label, metadata,
                 )
+                # Spotlight pulse: cursor arrived, highlight the target
+                for i in range(SPOTLIGHT_FRAMES):
+                    frame_num = take_screenshot(
+                        page, frames_dir, frame_num, cursor, [],
+                        step_idx, label, "spotlight", metadata,
+                        spotlight_pos=cursor[:], spotlight_progress=(i + 1) / SPOTLIGHT_FRAMES,
+                    )
                 element.click()
                 for char in action.get("text", ""):
                     element.type(char)
@@ -229,6 +256,15 @@ def execute_walkthrough(actions: list, frames_dir: Path, client: Anthropic,
                     pass
                 frame_num = settle(page, frames_dir, frame_num, cursor, [],
                                    step_idx, label, act, metadata, delay_ms)
+
+            elif act == "scene":
+                # Full-frame scene transition card
+                for i in range(SCENE_FRAMES):
+                    frame_num = take_screenshot(
+                        page, frames_dir, frame_num, cursor, [],
+                        step_idx, label, "scene", metadata,
+                        scene_frame=i, scene_total=SCENE_FRAMES,
+                    )
 
             elif act == "wait":
                 frame_num = settle(page, frames_dir, frame_num, cursor, [],

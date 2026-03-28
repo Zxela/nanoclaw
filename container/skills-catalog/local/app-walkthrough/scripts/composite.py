@@ -145,13 +145,17 @@ def draw_keyboard_badge(draw: ImageDraw.ImageDraw, keys: list, theme: ThemeConfi
 
 
 def draw_callout(draw: ImageDraw.ImageDraw, label: str, theme: ThemeConfig,
-                 cursor_pos: list, img_width: int, img_height: int,
-                 font: ImageFont.FreeTypeFont, opacity: float = 1.0):
-    """Draw step annotation callout near cursor position."""
+                 img_width: int, img_height: int,
+                 font: ImageFont.FreeTypeFont,
+                 slide_offset: int = 0,
+                 opacity: float = 1.0):
+    """Draw step annotation as a fixed subtitle strip at bottom of frame.
+    slide_offset: vertical pixel offset (positive = lower/hidden, 0 = fully shown)
+    """
     if not label:
         return
     text = theme.callout_prefix + label
-    px, py = 12, 8
+    px, py = 16, 10
     br = theme.callout_border_radius
 
     bbox = font.getbbox(text)
@@ -160,11 +164,10 @@ def draw_callout(draw: ImageDraw.ImageDraw, label: str, theme: ThemeConfig,
     box_w = tw + px * 2
     box_h = th + py * 2
 
-    cx, cy = cursor_pos
-    bx = max(8, min(cx - box_w // 2, img_width - box_w - 8))
-    by = cy - box_h - 24
-    if by < 8:
-        by = cy + 24  # flip below cursor when near top
+    # Fixed position: horizontally centered, near bottom (above progress bar)
+    bar_clearance = 12 if theme.progress_bar else 4
+    bx = (img_width - box_w) // 2
+    by = img_height - box_h - bar_clearance - 8 + slide_offset  # slide_offset pushes it down off-screen
 
     bg = theme.callout_bg_color
     tc = theme.callout_text_color
@@ -182,6 +185,100 @@ def draw_callout(draw: ImageDraw.ImageDraw, label: str, theme: ThemeConfig,
         font=font,
         fill=(*tc, tc_alpha),
     )
+
+
+def draw_click_ripple(draw: ImageDraw.ImageDraw, center: list, progress: float,
+                      theme: ThemeConfig):
+    """Draw expanding ripple ring at click point."""
+    cx, cy = center
+    max_r = 55
+    r = int(max_r * progress)
+    alpha = int(220 * (1 - progress))
+    if alpha <= 0 or r <= 0:
+        return
+    cc = theme.cursor_color
+    draw.ellipse(
+        [cx - r, cy - r, cx + r, cy + r],
+        outline=(*cc, alpha),
+        width=max(1, int(3 * (1 - progress))),
+    )
+    # Second inner ring, slightly behind
+    r2 = max(0, int(r * 0.65))
+    alpha2 = int(140 * (1 - progress))
+    if r2 > 0 and alpha2 > 0:
+        draw.ellipse(
+            [cx - r2, cy - r2, cx + r2, cy + r2],
+            outline=(*cc, alpha2),
+            width=1,
+        )
+
+
+def draw_spotlight(img: Image.Image, pos: list, progress: float,
+                   theme: ThemeConfig) -> Image.Image:
+    """Draw a soft highlight circle at target position (cursor just arrived)."""
+    if progress <= 0:
+        return img
+    cx, cy = pos
+    max_r = 38
+    r = int(max_r * min(progress * 1.5, 1.0))
+    alpha = int(70 * math.sin(progress * math.pi))  # fade in then out
+    if r <= 0 or alpha <= 0:
+        return img
+    spot = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    sdraw = ImageDraw.Draw(spot)
+    cc = theme.cursor_color
+    sdraw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(*cc, alpha))
+    return Image.alpha_composite(img.convert("RGBA"), spot)
+
+
+def draw_scene_transition(img: Image.Image, label: str, scene_frame: int,
+                          scene_total: int, font: ImageFont.FreeTypeFont) -> Image.Image:
+    """Render full-frame scene transition card with flying text."""
+    w, h = img.size
+
+    # Darken base frame
+    dark = Image.new("RGBA", (w, h), (0, 0, 0, 180))
+    result = Image.alpha_composite(img.convert("RGBA"), dark)
+
+    # Animation phases: fly-in (20%), hold (60%), fly-out (20%)
+    fly_frames = max(1, int(scene_total * 0.25))
+    hold_start = fly_frames
+    hold_end = scene_total - fly_frames
+
+    if scene_frame < hold_start:
+        t = scene_frame / fly_frames
+        t_ease = t * t * (3 - 2 * t)
+        x_offset = int(w * (1 - t_ease))   # slides in from right
+        text_alpha = int(255 * t_ease)
+    elif scene_frame >= hold_end:
+        t = (scene_frame - hold_end) / fly_frames
+        t_ease = t * t * (3 - 2 * t)
+        x_offset = int(-w * t_ease)         # slides out to left
+        text_alpha = int(255 * (1 - t_ease))
+    else:
+        x_offset = 0
+        text_alpha = 255
+
+    # Draw centered text
+    draw = ImageDraw.Draw(result)
+    bbox = font.getbbox(label)
+    tw = bbox[2] - bbox[0]
+    th = bbox[3] - bbox[1]
+    tx = (w - tw) // 2 + x_offset
+    ty = (h - th) // 2 - bbox[1]
+
+    # Shadow
+    draw.text((tx + 3, ty + 3), label, font=font, fill=(0, 0, 0, int(text_alpha * 0.6)))
+    # Text
+    draw.text((tx, ty), label, font=font, fill=(255, 255, 255, text_alpha))
+
+    # Thin accent line under text
+    line_y = ty + th + 12
+    line_x1 = (w - min(tw + 80, w - 40)) // 2 + x_offset
+    line_x2 = line_x1 + min(tw + 80, w - 40)
+    draw.rectangle([line_x1, line_y, line_x2, line_y + 2], fill=(255, 255, 255, int(text_alpha * 0.5)))
+
+    return result
 
 
 def apply_vignette(img: Image.Image, strength: float) -> Image.Image:
@@ -238,18 +335,44 @@ def composite_frames(frames_dir: Path, output_dir: Path, theme_name: str):
     total_steps = max((m["step_index"] for m in metadata), default=0) + 1
     badge_font = load_font(theme.badge_font_path, theme.badge_font_size)
     callout_font = load_font(theme.callout_font_path, theme.callout_font_size)
+    scene_font = load_font(theme.callout_font_path, 48)
+
+    # Compute per-step frame ranges for callout slide animation
+    step_frames: dict[int, list[int]] = {}  # step_index → list of frame indices
+    for i, m in enumerate(metadata):
+        si = m["step_index"]
+        step_frames.setdefault(si, []).append(i)
+
+    SLIDE_IN_FRAMES = 6   # frames to slide in at step start
+    SLIDE_OUT_FRAMES = 6  # frames to slide out at step end
+    CALLOUT_HEIGHT = 48   # approximate px height to slide by
 
     trail: list = []
     key_display: list = []
     key_frames_since = KEY_BADGE_FADE_FRAMES  # start faded
 
-    for meta in metadata:
+    for frame_idx, meta in enumerate(metadata):
         src = frames_dir / meta["frame"]
         img = Image.open(src).convert("RGBA")
         w, h = img.size
 
         if theme.vignette:
             img = apply_vignette(img, theme.vignette_strength)
+
+        # Spotlight pulse when cursor arrives at target
+        if meta.get("step_action") == "spotlight" and meta.get("spotlight_pos"):
+            img = draw_spotlight(img, meta["spotlight_pos"], meta.get("spotlight_progress", 0.5), theme)
+
+        # Scene transition: skip normal overlay pipeline
+        if meta.get("step_action") == "scene":
+            result = draw_scene_transition(
+                img, meta["step_label"],
+                meta.get("scene_frame", 0), meta.get("scene_total", 30),
+                scene_font,
+            )
+            out_path = output_dir / meta["frame"]
+            result.convert("RGB").save(str(out_path), "PNG")
+            continue  # skip normal overlay pipeline for scene frames
 
         overlay = Image.new("RGBA", (w, h), (0, 0, 0, 0))
         draw = ImageDraw.Draw(overlay)
@@ -278,6 +401,10 @@ def composite_frames(frames_dir: Path, output_dir: Path, theme_name: str):
         # Draw current cursor
         draw_cursor(draw, cursor, theme, opacity=1.0)
 
+        # Draw click ripple
+        if meta.get("step_action") == "ripple" and meta.get("ripple_center"):
+            draw_click_ripple(draw, meta["ripple_center"], meta.get("ripple_progress", 0.5), theme)
+
         # Draw keyboard badge
         if theme.badge_always_visible:
             draw_keyboard_badge(draw, key_display or [], theme, w, h, badge_font, 1.0)
@@ -285,8 +412,26 @@ def composite_frames(frames_dir: Path, output_dir: Path, theme_name: str):
             fade = max(0.0, 1.0 - key_frames_since / KEY_BADGE_FADE_FRAMES)
             draw_keyboard_badge(draw, key_display, theme, w, h, badge_font, fade)
 
+        # Compute callout slide animation
+        step_idx_val = meta["step_index"]
+        step_frame_list = step_frames.get(step_idx_val, [])
+        pos_in_step = step_frame_list.index(frame_idx) if frame_idx in step_frame_list else 0
+        total_in_step = len(step_frame_list)
+
+        if pos_in_step < SLIDE_IN_FRAMES:
+            t = pos_in_step / SLIDE_IN_FRAMES
+            t_ease = t * t * (3 - 2 * t)
+            callout_slide = int(CALLOUT_HEIGHT * (1 - t_ease))
+        elif pos_in_step >= total_in_step - SLIDE_OUT_FRAMES:
+            t = (pos_in_step - (total_in_step - SLIDE_OUT_FRAMES)) / SLIDE_OUT_FRAMES
+            t_ease = t * t * (3 - 2 * t)
+            callout_slide = int(CALLOUT_HEIGHT * t_ease)
+        else:
+            callout_slide = 0
+
         # Draw step callout
-        draw_callout(draw, meta["step_label"], theme, cursor, w, h, callout_font)
+        draw_callout(draw, meta["step_label"], theme, w, h, callout_font,
+                     slide_offset=callout_slide)
 
         # Draw progress bar
         if theme.progress_bar:

@@ -21,7 +21,7 @@ from anthropic import Anthropic
 SYSTEM_PROMPT = """You convert prose walkthrough steps into a structured JSON action list.
 
 Return a JSON array where each item has:
-- action: "goto" | "click" | "type" | "key" | "wait"
+- action: "goto" | "click" | "type" | "key" | "wait" | "scene"
 - label: human-readable annotation shown in video overlay (required for all)
 - url: full URL (only for goto)
 - hint: text/aria hint to find element (for click and type)
@@ -39,6 +39,7 @@ Rules:
 - "Press cmd+k" → {action:"key", keys:["cmd","k"], label:"Press ⌘K"}
 - "Navigate to Settings → Billing" → two clicks: Settings then Billing
 - "Wait for X" → {action:"wait", delay_ms:1500, label:"Waiting for X"}
+- "Scene: X" or "Transition to X" or "Title card: X" or "--- X ---" → {action:"scene", label:"X"}
 
 Use modifier symbols in labels: ⌘ for cmd, ⌥ for alt, ⇧ for shift, ⌃ for ctrl.
 
