@@ -148,6 +148,24 @@ export function _setRegisteredGroups(
   registeredGroups = groups;
 }
 
+/** @internal - exported for testing */
+export function _addTestChannel(channel: Channel): void {
+  channels.push(channel);
+}
+
+/** @internal - exported for testing */
+export function _clearTestChannels(): void {
+  channels.length = 0;
+}
+
+/** @internal - exported for testing */
+export function _processGroupMessagesForTest(
+  chatJid: string,
+  threadId?: string,
+): Promise<boolean> {
+  return processGroupMessages(chatJid, threadId);
+}
+
 /**
  * Process all pending messages for a group.
  * Called by the GroupQueue when it's this group's turn.
