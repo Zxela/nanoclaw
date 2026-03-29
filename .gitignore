@@ -47,3 +47,5 @@ groups/*/knowledge/
 agents-sdk-docs
 container/skills-catalog/catalog.json
 .claude/worktrees/
+*.pyc
+__pycache__/
