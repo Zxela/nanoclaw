@@ -81,7 +81,21 @@ for s in catalog.get('skills', []):
   fi
 fi
 
-# 7. Python files parse without syntax errors
+# 7. Referenced files exist
+# Extract filenames from code blocks and inline code that look like local paths
+# (e.g., my_script.py, template.md) and check they exist in the skill directory
+while IFS= read -r ref; do
+  [ -z "$ref" ] && continue
+  # Skip paths that are clearly examples/templates (contain {, my-, placeholder names)
+  case "$ref" in *"{"*|"my_"*|"my-"*) continue;; esac
+  if [ -f "${SKILL_DIR}/${ref}" ]; then
+    pass "Referenced file exists: ${ref}"
+  else
+    warn "Referenced file not found: ${ref} (may be an example)"
+  fi
+done < <(sed -n '/^---$/,/^---$/d; s/.*[`"'"'"'\/]\([a-zA-Z0-9_-]*\.\(py\|sh\|json\|yaml\|yml\|md\|txt\|csv\|toml\)\)[`"'"'"' ].*/\1/p' "$SKILL_MD" | sort -u)
+
+# 8. Python files parse without syntax errors
 for pyfile in "${SKILL_DIR}"/*.py; do
   [ -f "$pyfile" ] || continue
   PYNAME=$(basename "$pyfile")
