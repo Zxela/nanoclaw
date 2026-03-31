@@ -8,6 +8,7 @@ import {
   GROUPS_DIR,
   FILE_SEND_ALLOWLIST,
   IPC_POLL_INTERVAL,
+  MAX_SCHEDULED_TASKS_PER_GROUP,
   TIMEZONE,
 } from './config.js';
 import { AvailableGroup } from './container-runner.js';
@@ -15,6 +16,7 @@ import {
   createTask,
   createThreadContext,
   deleteTask,
+  getActiveTaskCountForGroup,
   getAllTasks,
   getTaskById,
   updateTask,
@@ -876,6 +878,21 @@ export async function processTaskIpc(
             break;
           }
           nextRun = date.toISOString();
+        }
+
+        // Enforce task count cap per group
+        const activeCount = getActiveTaskCountForGroup(targetFolder);
+        if (activeCount >= MAX_SCHEDULED_TASKS_PER_GROUP) {
+          logger.warn(
+            {
+              sourceGroup,
+              targetFolder,
+              activeCount,
+              max: MAX_SCHEDULED_TASKS_PER_GROUP,
+            },
+            'Task count cap reached, rejecting schedule_task',
+          );
+          break;
         }
 
         const taskId =
