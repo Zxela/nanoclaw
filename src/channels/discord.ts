@@ -379,14 +379,22 @@ export class DiscordChannel implements Channel {
           }
         }
 
-        // Handle reply context — include who the user is replying to.
+        // Handle reply context — include who the user is replying to and what they said.
         // Insert AFTER trigger prefix so ^@Jarvis pattern still matches.
         if (repliedToMessage) {
           const replyAuthor =
             repliedToMessage.member?.displayName ||
             repliedToMessage.author.displayName ||
             repliedToMessage.author.username;
-          const replyTag = `[Reply to ${replyAuthor}]`;
+          const MAX_REPLY_PREVIEW = 300;
+          const rawContent = repliedToMessage.content || '';
+          const preview =
+            rawContent.length > MAX_REPLY_PREVIEW
+              ? rawContent.slice(0, MAX_REPLY_PREVIEW) + '…'
+              : rawContent;
+          const replyTag = preview
+            ? `[Reply to ${replyAuthor}: "${preview}"]`
+            : `[Reply to ${replyAuthor}]`;
           const triggerMatch = content.match(/^(@\S+\s*)/);
           if (triggerMatch && TRIGGER_PATTERN.test(content.trim())) {
             content = `${triggerMatch[1]}${replyTag} ${content.slice(triggerMatch[0].length)}`;
