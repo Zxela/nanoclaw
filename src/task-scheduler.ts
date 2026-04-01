@@ -12,6 +12,7 @@ import {
 import { ContainerOutput, runContainerAgent } from './container-runner.js';
 import {
   deleteSession,
+  getConsecutiveFailures,
   getDueTasks,
   getTaskById,
   logTaskRun,
@@ -22,6 +23,22 @@ import { GroupQueue } from './group-queue.js';
 import { resolveGroupFolderPath } from './group-folder.js';
 import { logger } from './logger.js';
 import { RegisteredGroup, ScheduledTask } from './types.js';
+
+/** Maximum consecutive failures before a task is auto-paused. */
+export const MAX_TASK_RETRIES = 3;
+
+/** Backoff delays (ms) indexed by failure count (1-based). */
+const RETRY_BACKOFFS_MS = [60_000, 5 * 60_000, 15 * 60_000];
+
+/**
+ * Compute a retry next_run time based on how many consecutive failures
+ * have occurred. Uses exponential-ish backoff: 1 min → 5 min → 15 min.
+ */
+export function computeRetryNextRun(consecutiveFailures: number): string {
+  const idx = Math.min(consecutiveFailures - 1, RETRY_BACKOFFS_MS.length - 1);
+  const backoffMs = RETRY_BACKOFFS_MS[idx];
+  return new Date(Date.now() + backoffMs).toISOString();
+}
 
 /**
  * Compute the next run time for a recurring task, anchored to the
@@ -290,12 +307,38 @@ async function runTask(
     error,
   });
 
+  if (error) {
+    // Count failures including this one (log was already written above)
+    const failures = getConsecutiveFailures(task.id);
+
+    if (failures >= MAX_TASK_RETRIES) {
+      // Auto-pause after too many consecutive failures
+      updateTask(task.id, { status: 'paused' });
+      const msg = `⚠️ Scheduled task paused after ${failures} consecutive failures.\n\nTask: ${task.prompt.slice(0, 100)}\nLast error: ${error}`;
+      await deps.sendMessage(task.chat_jid, msg).catch(() => {});
+      logger.warn(
+        { taskId: task.id, failures },
+        'Task auto-paused after max consecutive failures',
+      );
+      return;
+    }
+
+    // Schedule a retry with backoff instead of the normal next_run
+    const retryNextRun = computeRetryNextRun(failures);
+    logger.info(
+      { taskId: task.id, failures, retryNextRun },
+      'Task failed — scheduled retry with backoff',
+    );
+    updateTaskAfterRun(
+      task.id,
+      retryNextRun,
+      `Error (attempt ${failures}): ${error}`,
+    );
+    return;
+  }
+
   const nextRun = computeNextRun(task);
-  const resultSummary = error
-    ? `Error: ${error}`
-    : result
-      ? (result as string).slice(0, 200)
-      : 'Completed';
+  const resultSummary = result ? (result as string).slice(0, 200) : 'Completed';
   updateTaskAfterRun(task.id, nextRun, resultSummary);
 }
 

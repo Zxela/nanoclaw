@@ -8,6 +8,7 @@ import {
   GROUPS_DIR,
   FILE_SEND_ALLOWLIST,
   IPC_POLL_INTERVAL,
+  MAX_SCHEDULED_TASKS_PER_GROUP,
   TIMEZONE,
 } from './config.js';
 import { AvailableGroup } from './container-runner.js';
@@ -15,12 +16,14 @@ import {
   createTask,
   createThreadContext,
   deleteTask,
+  getActiveTaskCountForGroup,
   getAllTasks,
   getTaskById,
   updateTask,
 } from './db.js';
 import { isValidGroupFolder } from './group-folder.js';
 import { logger } from './logger.js';
+import { appendToolLog, buildToolDetail } from './tool-log.js';
 import { RegisteredGroup } from './types.js';
 
 /** Parse numeric thread context ID from "ctx-{id}" format, or undefined. */
@@ -409,112 +412,146 @@ async function processQueueFile(
   // Skip non-IPC files (e.g. current_tasks.json, available_groups.json)
   if (Array.isArray(data) || typeof data.type !== 'string') return;
 
-  switch (data.type) {
-    case 'message':
-      await handleIpcMessage(
-        data,
-        sourceGroup,
-        threadId,
-        isMain,
-        deps,
-        registeredGroups,
-      );
-      break;
-    case 'send_files':
-      await handleIpcFiles(
-        data,
-        sourceGroup,
-        threadId,
-        isMain,
-        ipcBaseDir,
-        basePath,
-        deps,
-        registeredGroups,
-      );
-      break;
-    case 'list_tasks': {
-      // Sanitize requestId to prevent path traversal (defense-in-depth)
-      const requestId = ((data.requestId as string) || '').replace(
-        /[^a-zA-Z0-9_-]/g,
-        '',
-      );
-      if (!requestId) break;
+  const _toolLogStart = Date.now();
+  let _toolLogOk = true;
+  let _toolLogError: string | undefined;
 
-      const allTasks = getAllTasks();
-      const filtered = isMain
-        ? allTasks
-        : allTasks.filter((t) => t.group_folder === sourceGroup);
-
-      const response = filtered.map((t) => ({
-        id: t.id,
-        groupFolder: t.group_folder,
-        prompt: t.prompt,
-        schedule_type: t.schedule_type,
-        schedule_value: t.schedule_value,
-        status: t.status,
-        next_run: t.next_run,
-      }));
-
-      const inputDir = path.join(basePath, 'input');
-      fs.mkdirSync(inputDir, { recursive: true });
-      const responseFile = path.join(inputDir, `list_tasks-${requestId}.json`);
-      const tempFile = `${responseFile}.tmp`;
-      fs.writeFileSync(tempFile, JSON.stringify(response));
-      fs.renameSync(tempFile, responseFile);
-      break;
-    }
-    case 'schedule_task':
-    case 'pause_task':
-    case 'resume_task':
-    case 'cancel_task':
-    case 'update_task':
-    case 'refresh_groups':
-    case 'register_group':
-    case 'debug_query':
-      if (!threadId)
-        await processTaskIpc(
-          data as Parameters<typeof processTaskIpc>[0],
+  try {
+    switch (data.type) {
+      case 'message':
+        await handleIpcMessage(
+          data,
           sourceGroup,
+          threadId,
           isMain,
           deps,
+          registeredGroups,
         );
-      break;
-    case 'escalate_to_goal':
-      if (deps.onEscalateToGoal && data.groupFolder) {
-        deps.onEscalateToGoal(sourceGroup, threadId || 'default');
-        logger.info({ sourceGroup, threadId }, 'goal.escalated via IPC');
+        break;
+      case 'send_files':
+        await handleIpcFiles(
+          data,
+          sourceGroup,
+          threadId,
+          isMain,
+          ipcBaseDir,
+          basePath,
+          deps,
+          registeredGroups,
+        );
+        break;
+      case 'list_tasks': {
+        // Sanitize requestId to prevent path traversal (defense-in-depth)
+        const requestId = ((data.requestId as string) || '').replace(
+          /[^a-zA-Z0-9_-]/g,
+          '',
+        );
+        if (!requestId) break;
+
+        const allTasks = getAllTasks();
+        const filtered = isMain
+          ? allTasks
+          : allTasks.filter((t) => t.group_folder === sourceGroup);
+
+        const response = filtered.map((t) => ({
+          id: t.id,
+          groupFolder: t.group_folder,
+          prompt: t.prompt,
+          schedule_type: t.schedule_type,
+          schedule_value: t.schedule_value,
+          status: t.status,
+          next_run: t.next_run,
+        }));
+
+        const inputDir = path.join(basePath, 'input');
+        fs.mkdirSync(inputDir, { recursive: true });
+        const responseFile = path.join(
+          inputDir,
+          `list_tasks-${requestId}.json`,
+        );
+        const tempFile = `${responseFile}.tmp`;
+        fs.writeFileSync(tempFile, JSON.stringify(response));
+        fs.renameSync(tempFile, responseFile);
+        break;
       }
-      break;
-    case 'paused':
-      if (deps.onContainerPaused) {
-        deps.onContainerPaused(sourceGroup, threadId || 'default');
-      }
-      break;
-    case 'resumed':
-      if (deps.onContainerResumed) {
-        deps.onContainerResumed(sourceGroup, threadId || 'default');
-      }
-      break;
-    default: {
-      const externalHandler = externalIpcHandlers.get(data.type as string);
-      if (externalHandler) {
-        await externalHandler(data, sourceGroup, isMain, deps);
-      } else {
-        logger.warn(
-          {
-            type: data.type,
+      case 'schedule_task':
+      case 'pause_task':
+      case 'resume_task':
+      case 'cancel_task':
+      case 'update_task':
+      case 'refresh_groups':
+      case 'register_group':
+      case 'debug_query':
+        if (!threadId)
+          await processTaskIpc(
+            data as Parameters<typeof processTaskIpc>[0],
             sourceGroup,
-            threadId,
-            keys: Object.keys(data).join(','),
-          },
-          'Unknown IPC message type',
-        );
+            isMain,
+            deps,
+            ipcBaseDir,
+          );
+        break;
+      case 'escalate_to_goal':
+        if (deps.onEscalateToGoal && data.groupFolder) {
+          deps.onEscalateToGoal(sourceGroup, threadId || 'default');
+          logger.info({ sourceGroup, threadId }, 'goal.escalated via IPC');
+        }
+        break;
+      case 'paused':
+        if (deps.onContainerPaused) {
+          deps.onContainerPaused(sourceGroup, threadId || 'default');
+        }
+        break;
+      case 'resumed':
+        if (deps.onContainerResumed) {
+          deps.onContainerResumed(sourceGroup, threadId || 'default');
+        }
+        break;
+      default: {
+        const externalHandler = externalIpcHandlers.get(data.type as string);
+        if (externalHandler) {
+          await externalHandler(data, sourceGroup, isMain, deps);
+        } else {
+          logger.warn(
+            {
+              type: data.type,
+              sourceGroup,
+              threadId,
+              keys: Object.keys(data).join(','),
+            },
+            'Unknown IPC message type',
+          );
+        }
       }
     }
+  } catch (err) {
+    _toolLogOk = false;
+    _toolLogError = err instanceof Error ? err.message : String(err);
+    throw err;
+  } finally {
+    appendToolLog({
+      ts: new Date().toISOString(),
+      group: sourceGroup,
+      thread: threadId,
+      type: data.type as string,
+      durationMs: Date.now() - _toolLogStart,
+      ok: _toolLogOk,
+      detail: buildToolDetail(data.type as string, data),
+      error: _toolLogError,
+    });
   }
 }
 
 let ipcWatcherRunning = false;
+let ipcWatcherStopped = false;
+
+/** @internal Exposed for integration testing only. */
+export const _processQueueFile = processQueueFile;
+
+/** Signal the IPC watcher loop to stop after its current iteration. */
+export function stopIpcWatcher(): void {
+  ipcWatcherStopped = true;
+}
 
 export function startIpcWatcher(deps: IpcDeps): void {
   if (ipcWatcherRunning) {
@@ -522,6 +559,7 @@ export function startIpcWatcher(deps: IpcDeps): void {
     return;
   }
   ipcWatcherRunning = true;
+  ipcWatcherStopped = false;
 
   const ipcBaseDir = path.join(DATA_DIR, 'ipc');
   fs.mkdirSync(ipcBaseDir, { recursive: true });
@@ -544,7 +582,7 @@ export function startIpcWatcher(deps: IpcDeps): void {
       });
     } catch (err) {
       logger.error({ err }, 'Error reading IPC base directory');
-      setTimeout(processIpcFiles, IPC_POLL_INTERVAL);
+      if (!ipcWatcherStopped) setTimeout(processIpcFiles, IPC_POLL_INTERVAL);
       return;
     }
 
@@ -664,7 +702,13 @@ export function startIpcWatcher(deps: IpcDeps): void {
                 const filePath = path.join(tasksDir, file);
                 try {
                   const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-                  await processTaskIpc(data, sourceGroup, isMain, deps);
+                  await processTaskIpc(
+                    data,
+                    sourceGroup,
+                    isMain,
+                    deps,
+                    ipcBaseDir,
+                  );
                   fs.unlinkSync(filePath);
                 } catch (err) {
                   logger.error(
@@ -739,7 +783,7 @@ export function startIpcWatcher(deps: IpcDeps): void {
       }
     }
 
-    setTimeout(processIpcFiles, IPC_POLL_INTERVAL);
+    if (!ipcWatcherStopped) setTimeout(processIpcFiles, IPC_POLL_INTERVAL);
   };
 
   processIpcFiles();
@@ -757,6 +801,7 @@ export async function processTaskIpc(
     groupFolder?: string;
     chatJid?: string;
     targetJid?: string;
+    requestId?: string;
     // For register_group
     jid?: string;
     name?: string;
@@ -771,7 +816,9 @@ export async function processTaskIpc(
   sourceGroup: string, // Verified identity from IPC directory
   isMain: boolean, // Verified from directory path
   deps: IpcDeps,
+  ipcBaseDir?: string,
 ): Promise<void> {
+  const resolvedIpcBaseDir = ipcBaseDir || path.join(DATA_DIR, 'ipc');
   const registeredGroups = deps.registeredGroups();
 
   switch (data.type) {
@@ -843,6 +890,43 @@ export async function processTaskIpc(
           nextRun = date.toISOString();
         }
 
+        // Enforce task count cap per group
+        const activeCount = getActiveTaskCountForGroup(targetFolder);
+        if (activeCount >= MAX_SCHEDULED_TASKS_PER_GROUP) {
+          logger.warn(
+            {
+              sourceGroup,
+              targetFolder,
+              activeCount,
+              max: MAX_SCHEDULED_TASKS_PER_GROUP,
+            },
+            'Task count cap reached, rejecting schedule_task',
+          );
+          // Write error response so the agent knows the request was rejected
+          const reqId = ((data.requestId as string) || '').replace(
+            /[^a-zA-Z0-9_-]/g,
+            '',
+          );
+          if (reqId) {
+            const groupIpcDir = path.join(resolvedIpcBaseDir, sourceGroup);
+            const inputDir = path.join(groupIpcDir, 'input');
+            fs.mkdirSync(inputDir, { recursive: true });
+            const responseFile = path.join(
+              inputDir,
+              `schedule_task-${reqId}.json`,
+            );
+            const tempFile = `${responseFile}.tmp`;
+            fs.writeFileSync(
+              tempFile,
+              JSON.stringify({
+                error: `Task count cap reached (${activeCount}/${MAX_SCHEDULED_TASKS_PER_GROUP}). Pause or cancel existing tasks first.`,
+              }),
+            );
+            fs.renameSync(tempFile, responseFile);
+          }
+          break;
+        }
+
         const taskId =
           data.taskId ||
           `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -867,6 +951,27 @@ export async function processTaskIpc(
           'Task created via IPC',
         );
         deps.onTasksChanged();
+
+        // Write success response so the agent knows the task was created
+        const schedReqId = ((data.requestId as string) || '').replace(
+          /[^a-zA-Z0-9_-]/g,
+          '',
+        );
+        if (schedReqId) {
+          const groupIpcDir = path.join(resolvedIpcBaseDir, sourceGroup);
+          const inputDir = path.join(groupIpcDir, 'input');
+          fs.mkdirSync(inputDir, { recursive: true });
+          const responseFile = path.join(
+            inputDir,
+            `schedule_task-${schedReqId}.json`,
+          );
+          const tempFile = `${responseFile}.tmp`;
+          fs.writeFileSync(
+            tempFile,
+            JSON.stringify({ taskId, status: 'created' }),
+          );
+          fs.renameSync(tempFile, responseFile);
+        }
       }
       break;
 

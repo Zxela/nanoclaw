@@ -594,6 +594,15 @@ export function getTasksForGroup(groupFolder: string): ScheduledTask[] {
     .all(groupFolder) as ScheduledTask[];
 }
 
+export function getActiveTaskCountForGroup(groupFolder: string): number {
+  const row = db
+    .prepare(
+      'SELECT COUNT(*) as count FROM scheduled_tasks WHERE group_folder = ? AND status = ?',
+    )
+    .get(groupFolder, 'active') as { count: number };
+  return row.count;
+}
+
 export function getAllTasks(): ScheduledTask[] {
   return db
     .prepare('SELECT * FROM scheduled_tasks ORDER BY created_at DESC')
@@ -689,6 +698,28 @@ export function logTaskRun(log: TaskRunLog): void {
     log.result,
     log.error,
   );
+}
+
+/**
+ * Count consecutive failures for a task by scanning recent run logs
+ * from newest to oldest, stopping at the first success.
+ */
+export function getConsecutiveFailures(taskId: string): number {
+  const rows = db
+    .prepare(
+      `SELECT status FROM task_run_logs WHERE task_id = ? ORDER BY run_at DESC LIMIT 10`,
+    )
+    .all(taskId) as { status: string }[];
+
+  let count = 0;
+  for (const row of rows) {
+    if (row.status === 'error') {
+      count++;
+    } else {
+      break;
+    }
+  }
+  return count;
 }
 
 // --- Router state accessors ---
@@ -855,6 +886,18 @@ export function getActiveThreadContexts(
       'SELECT * FROM thread_contexts WHERE chat_jid = ? AND last_active_at > ? ORDER BY last_active_at DESC, id DESC',
     )
     .all(chatJid, cutoff) as ThreadContext[];
+}
+
+/**
+ * Get thread contexts that have no Discord thread yet (thread_id IS NULL),
+ * created after the given ISO cutoff. Used to re-hydrate pendingTrigger on restart.
+ */
+export function getPendingThreadContexts(cutoffIso: string): ThreadContext[] {
+  return db
+    .prepare(
+      'SELECT * FROM thread_contexts WHERE thread_id IS NULL AND created_at > ? ORDER BY created_at ASC',
+    )
+    .all(cutoffIso) as ThreadContext[];
 }
 
 // --- Watched PR accessors ---

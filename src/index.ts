@@ -54,7 +54,7 @@ import {
 import { GroupQueue } from './group-queue.js';
 import { resolveGroupFolderPath } from './group-folder.js';
 import { sendDebugQuery } from './debug-query.js';
-import { startIpcWatcher } from './ipc.js';
+import { startIpcWatcher, stopIpcWatcher } from './ipc.js';
 import { findChannel, formatMessages, formatOutbound } from './router.js';
 import {
   restoreRemoteControl,
@@ -76,6 +76,22 @@ import { logger } from './logger.js';
 
 // Re-export for backwards compatibility during refactor
 export { escapeXml, formatMessages } from './router.js';
+
+function chownRecursive(dir: string, uid: number, gid: number): void {
+  try {
+    fs.chownSync(dir, uid, gid);
+    for (const entry of fs.readdirSync(dir)) {
+      const full = path.join(dir, entry);
+      const stat = fs.lstatSync(full);
+      fs.chownSync(full, uid, gid);
+      if (stat.isDirectory()) {
+        chownRecursive(full, uid, gid);
+      }
+    }
+  } catch {
+    // Best-effort — don't fail container launch
+  }
+}
 
 let sessions: Record<string, string> = {};
 let registeredGroups: Record<string, RegisteredGroup> = {};
@@ -146,6 +162,24 @@ export function _setRegisteredGroups(
   groups: Record<string, RegisteredGroup>,
 ): void {
   registeredGroups = groups;
+}
+
+/** @internal - exported for testing */
+export function _addTestChannel(channel: Channel): void {
+  channels.push(channel);
+}
+
+/** @internal - exported for testing */
+export function _clearTestChannels(): void {
+  channels.length = 0;
+}
+
+/** @internal - exported for testing */
+export function _processGroupMessagesForTest(
+  chatJid: string,
+  threadId?: string,
+): Promise<boolean> {
+  return processGroupMessages(chatJid, threadId);
 }
 
 /**
@@ -774,6 +808,7 @@ async function main(): Promise<void> {
   // Graceful shutdown handlers
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'Shutdown signal received');
+    stopIpcWatcher();
     proxyServer.close();
     await queue.shutdown(10000);
     for (const ch of channels) await ch.disconnect();
@@ -977,22 +1012,8 @@ async function main(): Promise<void> {
             try {
               if (fs.existsSync(taskSessionDir)) {
                 fs.cpSync(taskSessionDir, ctxSessionDir, { recursive: true });
-                // Ensure container user (uid 1000) can write to copied session data
-                const chownRecursive = (dir: string): void => {
-                  try {
-                    fs.chownSync(dir, 1000, 1000);
-                    for (const entry of fs.readdirSync(dir, {
-                      withFileTypes: true,
-                    })) {
-                      const full = path.join(dir, entry.name);
-                      fs.chownSync(full, 1000, 1000);
-                      if (entry.isDirectory()) chownRecursive(full);
-                    }
-                  } catch {
-                    /* best-effort */
-                  }
-                };
-                chownRecursive(ctxSessionDir);
+                // Ensure container user can write to all copied session data
+                chownRecursive(ctxSessionDir, 1000, 1000);
               }
             } catch (err) {
               logger.warn(
