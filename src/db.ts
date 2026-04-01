@@ -722,6 +722,27 @@ export function getConsecutiveFailures(taskId: string): number {
   return count;
 }
 
+/**
+ * Get run counts for a set of task IDs in a single query.
+ * Returns a map of taskId → run count.
+ */
+export function getRunCountsForTasks(
+  taskIds: string[],
+): Record<string, number> {
+  if (taskIds.length === 0) return {};
+  const placeholders = taskIds.map(() => '?').join(', ');
+  const rows = db
+    .prepare(
+      `SELECT task_id, COUNT(*) as run_count FROM task_run_logs WHERE task_id IN (${placeholders}) GROUP BY task_id`,
+    )
+    .all(...taskIds) as { task_id: string; run_count: number }[];
+  const result: Record<string, number> = {};
+  for (const row of rows) {
+    result[row.task_id] = row.run_count;
+  }
+  return result;
+}
+
 // --- Router state accessors ---
 
 export function getRouterState(key: string): string | undefined {
