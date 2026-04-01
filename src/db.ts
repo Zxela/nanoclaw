@@ -700,6 +700,28 @@ export function logTaskRun(log: TaskRunLog): void {
   );
 }
 
+/**
+ * Count consecutive failures for a task by scanning recent run logs
+ * from newest to oldest, stopping at the first success.
+ */
+export function getConsecutiveFailures(taskId: string): number {
+  const rows = db
+    .prepare(
+      `SELECT status FROM task_run_logs WHERE task_id = ? ORDER BY run_at DESC LIMIT 10`,
+    )
+    .all(taskId) as { status: string }[];
+
+  let count = 0;
+  for (const row of rows) {
+    if (row.status === 'error') {
+      count++;
+    } else {
+      break;
+    }
+  }
+  return count;
+}
+
 // --- Router state accessors ---
 
 export function getRouterState(key: string): string | undefined {
