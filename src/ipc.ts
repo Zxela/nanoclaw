@@ -18,6 +18,7 @@ import {
   deleteTask,
   getActiveTaskCountForGroup,
   getAllTasks,
+  getRunCountsForTasks,
   getTaskById,
   updateTask,
 } from './db.js';
@@ -453,6 +454,8 @@ async function processQueueFile(
           ? allTasks
           : allTasks.filter((t) => t.group_folder === sourceGroup);
 
+        const runCounts = getRunCountsForTasks(filtered.map((t) => t.id));
+
         const response = filtered.map((t) => ({
           id: t.id,
           groupFolder: t.group_folder,
@@ -461,6 +464,9 @@ async function processQueueFile(
           schedule_value: t.schedule_value,
           status: t.status,
           next_run: t.next_run,
+          last_run: t.last_run,
+          last_result: t.last_result,
+          run_count: runCounts[t.id] ?? 0,
         }));
 
         const inputDir = path.join(basePath, 'input');
