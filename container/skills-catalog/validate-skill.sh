@@ -65,13 +65,17 @@ fi
 
 # 6. No catalog collision
 if [ -f "$CATALOG_FILE" ]; then
-  # Check if a local skill with this exact name+path already exists
-  EXISTING=$(python3 -c "
-import json, sys
-catalog = json.load(open('${CATALOG_FILE}'))
+  EXPECTED_PATH="/skills-catalog/${SKILL_REL}"
+  # Check if a different local skill with this name already exists
+  EXISTING=$(SKILL_NAME="$NAME" CATALOG="$CATALOG_FILE" EXPECTED="$EXPECTED_PATH" python3 -c "
+import json, os
+name = os.environ['SKILL_NAME']
+expected = os.environ['EXPECTED']
+catalog = json.load(open(os.environ['CATALOG']))
 for s in catalog.get('skills', []):
-    if s.get('source') == 'local' and s.get('name') == '${NAME}':
-        print(s['path'])
+    if s.get('source') == 'local' and s.get('name') == name:
+        if s.get('path') != expected:
+            print(s['path'])
         break
 " 2>/dev/null || true)
   if [ -n "$EXISTING" ]; then
@@ -99,7 +103,7 @@ done < <(sed -n '/^---$/,/^---$/d; s/.*[`"'"'"'\/]\([a-zA-Z0-9_-]*\.\(py\|sh\|js
 for pyfile in "${SKILL_DIR}"/*.py; do
   [ -f "$pyfile" ] || continue
   PYNAME=$(basename "$pyfile")
-  if python3 -c "import ast; ast.parse(open('${pyfile}').read())" 2>/dev/null; then
+  if PYFILE="$pyfile" python3 -c "import ast, os; ast.parse(open(os.environ['PYFILE']).read())" 2>/dev/null; then
     pass "Python file parses: ${PYNAME}"
   else
     fail "Python syntax error in: ${PYNAME}"

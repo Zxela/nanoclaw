@@ -530,11 +530,12 @@
     },
     {
       "name": "fundamental-analysis",
-      "description": "Compute Piotroski F-Score, PEG Ratio, Graham Number, and ROIC quality for stocks. Blend with technical analysis into a single 0-100 conviction score. Use when you need to evaluate a stock financial health, intrinsic value, or want a combined fundamental+technical signal.",
-      "path": "/skills-catalog/local/fundamental-analysis",
+      "source": "local",
+      "description": "Compute Piotroski F-Score, PEG Ratio, Graham Number, and ROIC quality for stocks. Blend with technical analysis into a single 0-100 conviction score. Use when you need to evaluate a stock's financial health, intrinsic value, or want a combined fundamental+technical signal.",
       "categories": [
         "general"
-      ]
+      ],
+      "path": "/skills-catalog/local/fundamental-analysis"
     },
     {
       "name": "generate-image",
@@ -955,6 +956,15 @@
         "coding"
       ],
       "path": "/skills-catalog/plugins/superpowers/receiving-code-review"
+    },
+    {
+      "name": "remember",
+      "source": "plugin:remember",
+      "description": "Save session state for clean continuation next session.",
+      "categories": [
+        "general"
+      ],
+      "path": "/skills-catalog/plugins/remember/remember"
     },
     {
       "name": "remotion",
