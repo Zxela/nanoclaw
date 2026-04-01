@@ -977,15 +977,22 @@ async function main(): Promise<void> {
             try {
               if (fs.existsSync(taskSessionDir)) {
                 fs.cpSync(taskSessionDir, ctxSessionDir, { recursive: true });
-                // Ensure container user can write to copied session data
-                const claudeDir = path.join(ctxSessionDir, '.claude');
-                if (fs.existsSync(claudeDir)) {
+                // Ensure container user (uid 1000) can write to copied session data
+                const chownRecursive = (dir: string): void => {
                   try {
-                    fs.chownSync(claudeDir, 1000, 1000);
+                    fs.chownSync(dir, 1000, 1000);
+                    for (const entry of fs.readdirSync(dir, {
+                      withFileTypes: true,
+                    })) {
+                      const full = path.join(dir, entry.name);
+                      fs.chownSync(full, 1000, 1000);
+                      if (entry.isDirectory()) chownRecursive(full);
+                    }
                   } catch {
                     /* best-effort */
                   }
-                }
+                };
+                chownRecursive(ctxSessionDir);
               }
             } catch (err) {
               logger.warn(
