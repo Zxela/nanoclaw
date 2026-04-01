@@ -35,8 +35,6 @@ Each JSON file has a `type` field dispatched by `processQueueFile()`:
 - `register_group`, `refresh_groups` — group management
 - `watch_pr`, `unwatch_pr` — PR watching (registered by pr-watcher module)
 
-Legacy per-type directories (`messages/`, `tasks/`, `files/`, `prs/`) are still read for backward compatibility with deprecation warnings.
-
 External modules can register custom IPC types via `registerIpcHandler(type, handler)`.
 
 ## Channel System
