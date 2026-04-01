@@ -191,6 +191,7 @@ function createMessage(overrides: {
         fetch: vi.fn().mockResolvedValue({
           author: { username: 'Bob', displayName: 'Bob' },
           member: { displayName: 'Bob' },
+          content: 'The original message text',
         }),
       },
     },
@@ -767,7 +768,8 @@ describe('DiscordChannel', () => {
       expect(opts.onMessage).toHaveBeenCalledWith(
         'dc:1234567890123456',
         expect.objectContaining({
-          content: '[Reply to Bob] I agree with that',
+          content:
+            '[Reply to Bob: "The original message text"] I agree with that',
         }),
       );
     });

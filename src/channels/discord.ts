@@ -70,6 +70,10 @@ export class DiscordChannel implements Channel {
   private currentSendTarget = new Map<string, ThreadContext>();
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private reconnecting = false;
+  // Maps Discord message ID → full original text, so replies to any chunk of a
+  // split response can retrieve the complete message. Capped to avoid unbounded growth.
+  private botMessageContents = new Map<string, string>();
+  private static readonly BOT_MSG_CACHE_MAX = 500;
 
   constructor(botToken: string, opts: DiscordChannelOpts) {
     this.botToken = botToken;
@@ -379,14 +383,27 @@ export class DiscordChannel implements Channel {
           }
         }
 
-        // Handle reply context — include who the user is replying to.
+        // Handle reply context — include who the user is replying to and what they said.
         // Insert AFTER trigger prefix so ^@Jarvis pattern still matches.
+        // If the replied-to message is a bot message that was split across multiple
+        // Discord messages, look up the full original text from botMessageContents.
         if (repliedToMessage) {
           const replyAuthor =
             repliedToMessage.member?.displayName ||
             repliedToMessage.author.displayName ||
             repliedToMessage.author.username;
-          const replyTag = `[Reply to ${replyAuthor}]`;
+          const MAX_REPLY_PREVIEW = 300;
+          // Prefer the cached full text (covers multi-chunk responses); fall back to
+          // the raw Discord message content (covers messages sent before this session).
+          const cachedFull = this.botMessageContents.get(repliedToMessage.id);
+          const rawContent = cachedFull ?? repliedToMessage.content ?? '';
+          const preview =
+            rawContent.length > MAX_REPLY_PREVIEW
+              ? rawContent.slice(0, MAX_REPLY_PREVIEW) + '…'
+              : rawContent;
+          const replyTag = preview
+            ? `[Reply to ${replyAuthor}: "${preview}"]`
+            : `[Reply to ${replyAuthor}]`;
           const triggerMatch = content.match(/^(@\S+\s*)/);
           if (triggerMatch && TRIGGER_PATTERN.test(content.trim())) {
             content = `${triggerMatch[1]}${replyTag} ${content.slice(triggerMatch[0].length)}`;
@@ -484,12 +501,27 @@ export class DiscordChannel implements Channel {
   private async sendChunked(
     target: { send: (text: string) => Promise<unknown> },
     text: string,
+    fullText?: string,
   ): Promise<void> {
     const MAX_LENGTH = 2000;
-    while (text.length > 0) {
-      const splitAt = findSplitPoint(text, MAX_LENGTH);
-      await target.send(text.slice(0, splitAt));
-      text = text.slice(splitAt).replace(/^\n/, '');
+    // fullText is the complete original message; text may already be a single chunk.
+    // We map every chunk's Discord message ID back to fullText so that replies to
+    // any chunk can retrieve the whole response.
+    const originalText = fullText ?? text;
+    let remaining = text;
+    while (remaining.length > 0) {
+      const splitAt = findSplitPoint(remaining, MAX_LENGTH);
+      const chunk = remaining.slice(0, splitAt);
+      const sent = (await target.send(chunk)) as { id?: string } | null;
+      if (sent?.id) {
+        // Evict oldest entries when cache is full
+        if (this.botMessageContents.size >= DiscordChannel.BOT_MSG_CACHE_MAX) {
+          const oldest = this.botMessageContents.keys().next().value;
+          if (oldest !== undefined) this.botMessageContents.delete(oldest);
+        }
+        this.botMessageContents.set(sent.id, originalText);
+      }
+      remaining = remaining.slice(splitAt).replace(/^\n/, '');
     }
   }
 
@@ -607,7 +639,7 @@ export class DiscordChannel implements Channel {
         threadContextId,
         text,
       );
-      await this.sendChunked(target, text);
+      await this.sendChunked(target, text, text);
 
       const logMessages = {
         'new-thread': 'Discord message sent to new thread',
