@@ -2,7 +2,13 @@ import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 
-import { ASSISTANT_NAME, DATA_DIR, STORE_DIR } from './config.js';
+import {
+  ASSISTANT_NAME,
+  CONTEXT_MAX_MESSAGES,
+  CONTEXT_TOKEN_BUDGET,
+  DATA_DIR,
+  STORE_DIR,
+} from './config.js';
 import { isValidGroupFolder } from './group-folder.js';
 import { logger } from './logger.js';
 import {
@@ -568,14 +574,29 @@ export function getNewMessages(
 }
 
 /**
+ * Rough token estimate: ~4 characters per token on average.
+ * Used to size conversation context without a full tokenizer.
+ */
+export function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+/**
  * Get recent conversation messages INCLUDING bot messages.
  * Used to provide conversation context when spawning new containers,
  * so the agent has prior context even if session resume fails.
+ *
+ * When tokenBudget > 0 (default from CONTEXT_TOKEN_BUDGET), fetches up to
+ * CONTEXT_MAX_MESSAGES from the DB and trims oldest messages until the total
+ * estimated token count fits within the budget. Falls back to the last
+ * `fallbackLimit` messages if budget is disabled (tokenBudget = 0).
  */
 export function getConversationContext(
   chatJid: string,
-  limit: number = 20,
+  fallbackLimit: number = 20,
+  tokenBudget: number = CONTEXT_TOKEN_BUDGET,
 ): NewMessage[] {
+  const fetchLimit = tokenBudget > 0 ? CONTEXT_MAX_MESSAGES : fallbackLimit;
   const sql = `
     SELECT * FROM (
       SELECT id, chat_jid, sender, sender_name, content, timestamp, is_from_me
@@ -585,7 +606,21 @@ export function getConversationContext(
       LIMIT ?
     ) ORDER BY timestamp
   `;
-  return db.prepare(sql).all(chatJid, limit) as NewMessage[];
+  const rows = db.prepare(sql).all(chatJid, fetchLimit) as NewMessage[];
+
+  if (tokenBudget <= 0 || rows.length === 0) {
+    return rows;
+  }
+
+  // Trim oldest messages until total token estimate fits within budget.
+  // We iterate from the start (oldest) and drop until we're within budget.
+  let totalTokens = rows.reduce((sum, m) => sum + estimateTokens(m.content), 0);
+  let start = 0;
+  while (start < rows.length - 1 && totalTokens > tokenBudget) {
+    totalTokens -= estimateTokens(rows[start].content);
+    start++;
+  }
+  return rows.slice(start);
 }
 
 export function getUnprocessedMessages(

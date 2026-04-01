@@ -6,10 +6,12 @@ import {
   createTask,
   createThreadContext,
   deleteTask,
+  estimateTokens,
   getActiveThreadContexts,
   getActiveWatchedPrs,
   getAllChats,
   getAllRegisteredGroups,
+  getConversationContext,
   getNewMessages,
   getRegisteredGroup,
   getUnprocessedMessages,
@@ -964,5 +966,101 @@ describe('getActiveThreadContexts', () => {
     const active = getActiveThreadContexts('dc:multi-active', 24);
     expect(active).toHaveLength(2);
     expect(active[0].thread_id).toBe('thread-b');
+  });
+});
+
+// --- estimateTokens ---
+
+describe('estimateTokens', () => {
+  it('estimates 1 token per 4 chars', () => {
+    expect(estimateTokens('1234')).toBe(1);
+    expect(estimateTokens('12345678')).toBe(2);
+  });
+
+  it('rounds up for partial chunks', () => {
+    expect(estimateTokens('123')).toBe(1);
+    expect(estimateTokens('12345')).toBe(2);
+  });
+
+  it('returns 0 for empty string', () => {
+    expect(estimateTokens('')).toBe(0);
+  });
+});
+
+// --- getConversationContext ---
+
+describe('getConversationContext', () => {
+  function storeCtxMsg(id: string, jid: string, content: string, ts: string) {
+    storeMessage({
+      id,
+      chat_jid: jid,
+      sender: 'u1',
+      sender_name: 'U',
+      content,
+      timestamp: ts,
+      is_from_me: false,
+    });
+  }
+
+  it('returns empty array for unknown chat', () => {
+    expect(getConversationContext('nobody@g.us')).toEqual([]);
+  });
+
+  it('returns messages in chronological order', () => {
+    storeChatMetadata('ctx@g.us', '2024-01-01T00:00:00Z');
+    storeCtxMsg('m1', 'ctx@g.us', 'first', '2024-01-01T00:00:01Z');
+    storeCtxMsg('m2', 'ctx@g.us', 'second', '2024-01-01T00:00:02Z');
+    storeCtxMsg('m3', 'ctx@g.us', 'third', '2024-01-01T00:00:03Z');
+
+    const result = getConversationContext('ctx@g.us');
+    expect(result.map((m) => m.content)).toEqual(['first', 'second', 'third']);
+  });
+
+  it('respects fallbackLimit when tokenBudget is 0', () => {
+    storeChatMetadata('lim@g.us', '2024-01-01T00:00:00Z');
+    for (let i = 1; i <= 10; i++) {
+      storeCtxMsg(
+        `lm${i}`,
+        'lim@g.us',
+        `msg${i}`,
+        `2024-01-01T00:00:0${i < 10 ? '0' : ''}${i}Z`,
+      );
+    }
+    const result = getConversationContext('lim@g.us', 3, 0);
+    expect(result).toHaveLength(3);
+    expect(result[2].content).toBe('msg10');
+  });
+
+  it('trims oldest messages to fit within token budget', () => {
+    storeChatMetadata('tok@g.us', '2024-01-01T00:00:00Z');
+    // Each message content is 100 chars = 25 tokens
+    const content = 'x'.repeat(100);
+    for (let i = 1; i <= 5; i++) {
+      storeCtxMsg(`tm${i}`, 'tok@g.us', content, `2024-01-01T00:00:0${i}Z`);
+    }
+    // Budget = 60 tokens → fits 2 messages (50 tokens), not 3 (75 tokens)
+    const result = getConversationContext('tok@g.us', 20, 60);
+    expect(result).toHaveLength(2);
+    // Should keep the two most recent
+    expect(result[0].id).toBe('tm4');
+    expect(result[1].id).toBe('tm5');
+  });
+
+  it('returns at least 1 message even if it exceeds the budget', () => {
+    storeChatMetadata('min@g.us', '2024-01-01T00:00:00Z');
+    storeCtxMsg('big', 'min@g.us', 'x'.repeat(1000), '2024-01-01T00:00:01Z');
+    // Budget of 1 token — message is 250 tokens, but we still return it
+    const result = getConversationContext('min@g.us', 20, 1);
+    expect(result).toHaveLength(1);
+  });
+
+  it('uses default token budget from config when not specified', () => {
+    storeChatMetadata('def@g.us', '2024-01-01T00:00:00Z');
+    for (let i = 1; i <= 5; i++) {
+      storeCtxMsg(`dm${i}`, 'def@g.us', 'hello', `2024-01-01T00:00:0${i}Z`);
+    }
+    // Default budget (6000 tokens) easily fits 5 short messages
+    const result = getConversationContext('def@g.us');
+    expect(result).toHaveLength(5);
   });
 });

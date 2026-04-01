@@ -90,6 +90,22 @@ export const THREAD_EXPIRY_HOURS = parseIntEnv(
   24,
 );
 
+// Token budget for conversation context injected into new containers.
+// Rough estimate: 4 chars ≈ 1 token. Default 6000 tokens (~24k chars) covers
+// ~30-60 typical messages while staying well under the model context window.
+// Set CONTEXT_TOKEN_BUDGET=0 to disable budget cap (falls back to limit).
+export const CONTEXT_TOKEN_BUDGET = parseIntEnv(
+  process.env.CONTEXT_TOKEN_BUDGET,
+  6000,
+);
+
+// Max messages to fetch from DB before token-trimming.
+// Acts as a safety cap even if token estimates are off.
+export const CONTEXT_MAX_MESSAGES = parseIntEnv(
+  process.env.CONTEXT_MAX_MESSAGES,
+  100,
+);
+
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
