@@ -107,6 +107,20 @@ Files: `deploy/auto-deploy.sh`, `deploy/nanoclaw-deploy.timer`, `deploy/nanoclaw
 - `watched_prs` — PR watch state
 - `router_state` — key-value store for misc state
 
+## Troubleshooting
+
+### Container uses stale files after rebuild
+
+BuildKit caches the build context aggressively. `docker build --no-cache` does **not** invalidate `COPY` steps — the builder's internal volume retains stale file metadata from previous builds. Symptoms: code changes don't take effect; old skill versions appear in the container.
+
+**Fix:** run the clean rebuild helper instead of `build.sh`:
+
+```bash
+./container/rebuild-clean.sh
+```
+
+This prunes the BuildKit builder cache first, then rebuilds from a clean state.
+
 ## Configuration
 
 Constants in `src/config.ts`. Key settings:
