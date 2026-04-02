@@ -53,6 +53,7 @@ The NanoClaw MCP server exposes these tools (via `mcp__nanoclaw__*` prefix):
 - `cancel_task` — cancel and delete a task
 - `update_task` — update an existing task
 - `register_group` — register a new chat/group (main only)
+- `update_group` — update a group's skills, name, or trigger (main only)
 - `debug_response` — respond to a supervisor debug query
 - `escalate_to_goal` — escalate to long-running autonomous goal mode
 
@@ -87,7 +88,7 @@ Present the report as a clean, readable message. Example:
 • Core: Bash, Read, Write, Edit, Glob, Grep
 • Web: WebSearch, WebFetch
 • Orchestration: Task, TeamCreate, SendMessage
-• MCP: send_message, send_files, schedule_task, list_tasks, pause/resume/cancel/update_task, register_group, debug_response, escalate_to_goal
+• MCP: send_message, send_files, schedule_task, list_tasks, pause/resume/cancel/update_task, register_group, update_group, debug_response, escalate_to_goal
 
 *Container Tools:*
 • agent-browser: ✓

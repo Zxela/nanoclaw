@@ -500,6 +500,7 @@ async function processQueueFile(
       case 'update_task':
       case 'refresh_groups':
       case 'register_group':
+      case 'update_group':
       case 'debug_query':
         if (!threadId)
           await processTaskIpc(
@@ -677,13 +678,14 @@ export async function processTaskIpc(
     chatJid?: string;
     targetJid?: string;
     requestId?: string;
-    // For register_group
+    // For register_group / update_group
     jid?: string;
     name?: string;
     folder?: string;
     trigger?: string;
     requiresTrigger?: boolean;
     containerConfig?: RegisteredGroup['containerConfig'];
+    skills?: string[];
     // For debug_query
     queryId?: string;
     question?: string;
@@ -1029,6 +1031,49 @@ export async function processTaskIpc(
         );
       }
       break;
+
+    case 'update_group': {
+      // Only main group can update group settings
+      if (!isMain) {
+        logger.warn(
+          { sourceGroup },
+          'Unauthorized update_group attempt blocked',
+        );
+        break;
+      }
+      if (!data.jid) {
+        logger.warn({ data }, 'Invalid update_group request - missing jid');
+        break;
+      }
+      const existing = deps.registeredGroups()[data.jid as string];
+      if (!existing) {
+        logger.warn(
+          { jid: data.jid },
+          'update_group: group not found, ignoring',
+        );
+        break;
+      }
+      const rawSkills = (data as Record<string, unknown>).skills;
+      const skills =
+        Array.isArray(rawSkills) &&
+        rawSkills.every((s) => typeof s === 'string')
+          ? (rawSkills as string[])
+          : existing.skills;
+      deps.registerGroup(data.jid as string, {
+        ...existing,
+        name:
+          typeof data.name === 'string' && data.name
+            ? data.name
+            : existing.name,
+        trigger:
+          typeof data.trigger === 'string' && data.trigger
+            ? data.trigger
+            : existing.trigger,
+        skills,
+      });
+      logger.info({ jid: data.jid, skills }, 'Group settings updated via IPC');
+      break;
+    }
 
     case 'debug_query':
       if (data.queryId && data.question && deps.onDebugQuery) {

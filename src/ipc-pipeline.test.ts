@@ -411,3 +411,95 @@ describe('Malformed IPC payloads', () => {
     expect(sendMessageSpy).not.toHaveBeenCalled();
   });
 });
+
+// ---------------------------------------------------------------------------
+// update_group type
+// ---------------------------------------------------------------------------
+
+describe('IPC update_group', () => {
+  let registerGroupSpy: ReturnType<typeof vi.fn> & IpcDeps['registerGroup'];
+
+  beforeEach(() => {
+    registerGroupSpy = vi.fn() as ReturnType<typeof vi.fn> &
+      IpcDeps['registerGroup'];
+    deps = { ...deps, registerGroup: registerGroupSpy };
+  });
+
+  it('main group can update skills of an existing group', async () => {
+    await process(
+      { type: 'update_group', jid: OTHER_JID, skills: ['general', 'creative'] },
+      { sourceGroup: MAIN_GROUP.folder, isMain: true },
+    );
+    expect(registerGroupSpy).toHaveBeenCalledWith(
+      OTHER_JID,
+      expect.objectContaining({ skills: ['general', 'creative'] }),
+    );
+  });
+
+  it('main group can update name and trigger', async () => {
+    await process(
+      {
+        type: 'update_group',
+        jid: OTHER_JID,
+        name: 'New Name',
+        trigger: '@bot',
+      },
+      { sourceGroup: MAIN_GROUP.folder, isMain: true },
+    );
+    expect(registerGroupSpy).toHaveBeenCalledWith(
+      OTHER_JID,
+      expect.objectContaining({ name: 'New Name', trigger: '@bot' }),
+    );
+  });
+
+  it('preserves unchanged fields when partial update', async () => {
+    await process(
+      { type: 'update_group', jid: OTHER_JID, skills: ['engineering'] },
+      { sourceGroup: MAIN_GROUP.folder, isMain: true },
+    );
+    expect(registerGroupSpy).toHaveBeenCalledWith(
+      OTHER_JID,
+      expect.objectContaining({
+        folder: OTHER_GROUP.folder,
+        trigger: OTHER_GROUP.trigger,
+        skills: ['engineering'],
+      }),
+    );
+  });
+
+  it('non-main group cannot call update_group', async () => {
+    await process(
+      { type: 'update_group', jid: OTHER_JID, skills: ['general'] },
+      { sourceGroup: OTHER_GROUP.folder, isMain: false },
+    );
+    expect(registerGroupSpy).not.toHaveBeenCalled();
+  });
+
+  it('ignores update for unknown jid', async () => {
+    await process(
+      { type: 'update_group', jid: 'unknown@g.us', skills: ['general'] },
+      { sourceGroup: MAIN_GROUP.folder, isMain: true },
+    );
+    expect(registerGroupSpy).not.toHaveBeenCalled();
+  });
+
+  it('ignores update_group with missing jid', async () => {
+    await process(
+      { type: 'update_group', skills: ['general'] },
+      { sourceGroup: MAIN_GROUP.folder, isMain: true },
+    );
+    expect(registerGroupSpy).not.toHaveBeenCalled();
+  });
+
+  it('ignores invalid skills payload (non-array)', async () => {
+    await process(
+      { type: 'update_group', jid: OTHER_JID, skills: 'general' },
+      { sourceGroup: MAIN_GROUP.folder, isMain: true },
+    );
+    // Falls back to existing skills, still calls registerGroup
+    expect(registerGroupSpy).toHaveBeenCalledWith(
+      OTHER_JID,
+      expect.objectContaining({ skills: OTHER_GROUP.skills }),
+    );
+  });
+});

@@ -551,6 +551,68 @@ Use available_groups.json to find the JID for a group. The folder name must be c
 );
 
 server.tool(
+  'update_group',
+  `Update settings for a registered group — change its skill categories, display name, or trigger word. Main group only.
+
+Skill categories control which skills are pre-loaded into the group's containers. Common categories: "general", "coding", "creative", "engineering".
+
+To view current group settings, read the groups snapshot at /workspace/group/available_groups.json.`,
+  {
+    jid: z
+      .string()
+      .describe(
+        'The JID of the group to update (e.g., "120363336345536173@g.us", "tg:-1001234567890")',
+      ),
+    skills: z
+      .array(z.string())
+      .optional()
+      .describe(
+        'New skill category list (e.g., ["general", "coding", "creative"]). Replaces the current list.',
+      ),
+    name: z.string().optional().describe('New display name for the group'),
+    trigger: z.string().optional().describe('New trigger word (e.g., "@Andy")'),
+  },
+  async (args) => {
+    if (!isMain) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: 'Only the main group can update group settings.',
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const data: Record<string, unknown> = {
+      type: 'update_group',
+      jid: args.jid,
+      timestamp: new Date().toISOString(),
+    };
+    if (args.skills !== undefined) data.skills = args.skills;
+    if (args.name !== undefined) data.name = args.name;
+    if (args.trigger !== undefined) data.trigger = args.trigger;
+
+    writeIpcFile(QUEUE_DIR, data);
+
+    const parts: string[] = [`Group ${args.jid} updated.`];
+    if (args.skills) parts.push(`Skills: ${args.skills.join(', ')}`);
+    if (args.name) parts.push(`Name: ${args.name}`);
+    if (args.trigger) parts.push(`Trigger: ${args.trigger}`);
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: parts.join(' '),
+        },
+      ],
+    };
+  },
+);
+
+server.tool(
   'send_files',
   `Send files to the chat as attachments. Files must be under /workspace/ or /tmp/ and must exist on disk.
 
