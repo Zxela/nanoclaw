@@ -62,9 +62,9 @@ export function readonlyMountArgs(
 
 /** Stop a container by name using execFileSync (no shell interpolation). */
 export function stopContainerSync(name: string): void {
-  execFileSync(CONTAINER_RUNTIME_BIN, ['stop', '-t', '30', name], {
+  execFileSync(CONTAINER_RUNTIME_BIN, ['stop', '-t', '1', name], {
     stdio: 'pipe',
-    timeout: 45000,
+    timeout: 15000,
   });
 }
 
@@ -75,8 +75,8 @@ export function stopContainerAsync(
 ): void {
   execFile(
     CONTAINER_RUNTIME_BIN,
-    ['stop', '-t', '30', name],
-    { timeout: 45000 },
+    ['stop', '-t', '1', name],
+    { timeout: 15000 },
     callback,
   );
 }
