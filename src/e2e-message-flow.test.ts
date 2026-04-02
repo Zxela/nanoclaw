@@ -37,6 +37,8 @@ vi.mock('./config.js', () => ({
   GOAL_TIMEOUT_MAX: 86400000,
   MAX_CONCURRENT_CONTAINERS: 2,
   MAX_CONTAINERS_PER_GROUP: 2,
+  CONTEXT_TOKEN_BUDGET: 6000,
+  CONTEXT_MAX_MESSAGES: 100,
 }));
 
 vi.mock('./container-runner.js', () => ({
