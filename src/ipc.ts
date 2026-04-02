@@ -198,6 +198,8 @@ function archiveIpcFile(
   }
 }
 
+const MAX_AUDIT_FILES_PER_GROUP = 500;
+
 function cleanupAuditFiles(ipcBaseDir: string): void {
   const maxAge = 7 * 24 * 60 * 60 * 1000;
   const now = Date.now();
@@ -210,15 +212,34 @@ function cleanupAuditFiles(ipcBaseDir: string): void {
       } catch {
         continue;
       }
+
+      // Build list with mtime for sorting
+      type FileEntry = { name: string; mtimeMs: number };
+      const entries: FileEntry[] = [];
       for (const file of files) {
         const filePath = path.join(auditDir, file);
         try {
           const stat = fs.statSync(filePath);
-          if (now - stat.mtimeMs > maxAge) {
-            fs.unlinkSync(filePath);
-          }
+          entries.push({ name: file, mtimeMs: stat.mtimeMs });
         } catch {
           /* file may have been removed concurrently */
+        }
+      }
+
+      // Sort oldest-first so we trim excess from the front
+      entries.sort((a, b) => a.mtimeMs - b.mtimeMs);
+
+      for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i];
+        const shouldDeleteByAge = now - entry.mtimeMs > maxAge;
+        const shouldDeleteByCap =
+          i < entries.length - MAX_AUDIT_FILES_PER_GROUP;
+        if (shouldDeleteByAge || shouldDeleteByCap) {
+          try {
+            fs.unlinkSync(path.join(auditDir, entry.name));
+          } catch {
+            /* file may have been removed concurrently */
+          }
         }
       }
     }
