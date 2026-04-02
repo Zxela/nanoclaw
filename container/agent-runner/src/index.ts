@@ -735,30 +735,28 @@ async function runTurn(
 }
 
 /**
- * Append a one-line session summary to the shared daily activity log.
- * Written on container shutdown (SIGTERM or normal exit) — once per session.
+ * Append one line to the shared daily activity log after each turn.
+ * Written synchronously — deterministic, no inference cost.
  * Path: /workspace/group/logs/YYYY/MM/YYYY-MM-DD.md
  */
 function writeActivityLog(
   groupFolder: string,
   isScheduledTask: boolean,
-  turnCount: number,
-  firstPrompt: string,
+  prompt: string,
 ): void {
   try {
     const now = new Date();
     const yyyy = now.getUTCFullYear();
     const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
     const dd = String(now.getUTCDate()).padStart(2, '0');
-    const timeStr = now.toISOString().slice(11, 16); // HH:MM UTC
+    const timeStr = now.toISOString().slice(11, 19); // HH:MM:SS UTC
     const logDir = `/workspace/group/logs/${yyyy}/${mm}`;
     const logFile = `${logDir}/${yyyy}-${mm}-${dd}.md`;
     fs.mkdirSync(logDir, { recursive: true });
-    const snippet = firstPrompt.replace(/\n/g, ' ').slice(0, 120);
+    const snippet = prompt.replace(/\n/g, ' ').slice(0, 120);
     const tag = isScheduledTask ? ' [scheduled]' : '';
-    const entry = `\n### Session ${timeStr}${tag} — ${groupFolder}\n- Turns: ${turnCount}\n- First message: "${snippet}"\n`;
+    const entry = `- ${timeStr}${tag} ${groupFolder}: "${snippet}"\n`;
     fs.appendFileSync(logFile, entry, 'utf-8');
-    log(`Activity log written: ${logFile}`);
   } catch (err) {
     log(`Failed to write activity log: ${err instanceof Error ? err.message : String(err)}`);
   }
@@ -810,28 +808,6 @@ async function main(): Promise<void> {
   // Build initial prompt (drain any pending IPC messages too)
   let prompt = containerInput.prompt;
 
-  // Track session activity for daily log
-  let turnCount = 0;
-  const firstPrompt = prompt;
-  let activityLogWritten = false;
-
-  const flushActivityLog = (): void => {
-    if (!activityLogWritten) {
-      activityLogWritten = true;
-      writeActivityLog(
-        containerInput.groupFolder,
-        containerInput.isScheduledTask ?? false,
-        turnCount,
-        firstPrompt,
-      );
-    }
-  };
-
-  // Write activity log on SIGTERM (docker stop grace period)
-  process.once('SIGTERM', () => {
-    flushActivityLog();
-    process.exit(0);
-  });
   if (containerInput.isScheduledTask) {
     prompt = `[SCHEDULED TASK - The following message was sent automatically and is not coming directly from the user or group.]\n\n${prompt}`;
   }
@@ -868,7 +844,8 @@ async function main(): Promise<void> {
       }
 
       initialImages = undefined; // Only send images on first turn
-      turnCount++;
+
+      writeActivityLog(containerInput.groupFolder, containerInput.isScheduledTask ?? false, prompt);
 
       if (turnResult.newSessionId) sessionId = turnResult.newSessionId;
       if (turnResult.lastAssistantUuid) resumeAt = turnResult.lastAssistantUuid;
@@ -897,7 +874,6 @@ async function main(): Promise<void> {
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     log(`Agent error: ${errorMessage}`);
-    flushActivityLog();
     writeOutput({
       status: 'error',
       result: null,
@@ -906,8 +882,6 @@ async function main(): Promise<void> {
     });
     process.exit(1);
   }
-
-  flushActivityLog();
 }
 
 main();
