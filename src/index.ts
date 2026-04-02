@@ -592,6 +592,10 @@ async function startMessageLoop(): Promise<void> {
   while (true) {
     try {
       const jids = Object.keys(registeredGroups);
+      if (jids.length === 0) {
+        await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
+        continue;
+      }
       const { messages } = getNewMessages(jids, ASSISTANT_NAME);
 
       if (messages.length > 0) {
