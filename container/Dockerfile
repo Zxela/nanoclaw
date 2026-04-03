@@ -96,13 +96,11 @@ RUN chmod +x /usr/local/bin/scad-render
 # Owned by root, read-only to container's node user — catalog is reference-only
 COPY skills-catalog/ /skills-catalog/
 
-# Install homerun plugin for Claude Code
-# Copies homerun's agents, skills, and commands into the Claude plugin directory.
-# The plugin provides orchestrated dev workflows with typed inter-agent contracts.
-COPY homerun-plugin/ /home/node/.claude/plugins/homerun/
-RUN mkdir -p /home/node/.claude/plugins && \
-    echo '{"plugins":{"homerun@local":[{"installPath":"/home/node/.claude/plugins/homerun","version":"5.7.1"}]}}' \
-    > /home/node/.claude/plugins/installed_plugins.json
+# Install plugins that have agent definitions (staged by sync-plugins.sh)
+# These are plugins with an agents/ directory — they need to live in
+# /home/node/.claude/plugins/ so Claude Code can dispatch named subagents.
+# agent-plugins/ is always created by sync-plugins.sh (may be empty).
+COPY agent-plugins/ /home/node/.claude/plugins/
 
 # Set ownership to node user (non-root) for writable directories
 RUN chown -R node:node /workspace && chmod 777 /home/node && \

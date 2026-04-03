@@ -55,3 +55,5 @@ container/skills-catalog/catalog.json
 .claude/worktrees/
 
 docs/superpowers
+# Agent plugins staged by sync-plugins.sh for Dockerfile installation
+container/agent-plugins/

@@ -165,15 +165,6 @@
       "path": "/skills-catalog/local/design-shotgun"
     },
     {
-      "name": "diagnose",
-      "source": "local",
-      "description": "\"[sonnet] Investigate bugs through a 3-phase evidence pipeline: investigate, verify, solve\"",
-      "categories": [
-        "coding"
-      ],
-      "path": "/skills-catalog/local/homerun/diagnose"
-    },
-    {
       "name": "differential-review",
       "source": "local",
       "description": ">",
@@ -192,15 +183,6 @@
       "path": "/skills-catalog/local/materials-simulation-skills/skills/core-numerical/differentiation-schemes"
     },
     {
-      "name": "discovery",
-      "source": "local",
-      "description": "",
-      "categories": [
-        "coding"
-      ],
-      "path": "/skills-catalog/local/homerun/discovery"
-    },
-    {
       "name": "docx",
       "source": "local",
       "description": "\"Create, read, or edit Word documents (.docx). Use for reports, memos, letters, templates, or any .docx task — including extracting content, replacing images, tracked changes, or converting output to Word format.\"",
@@ -209,15 +191,6 @@
         "creative"
       ],
       "path": "/skills-catalog/local/docx"
-    },
-    {
-      "name": "finishing-a-development-branch",
-      "source": "local",
-      "description": "",
-      "categories": [
-        "coding"
-      ],
-      "path": "/skills-catalog/local/homerun/finishing-a-development-branch"
     },
     {
       "name": "firecrawl-agent",
@@ -246,15 +219,6 @@
         "general"
       ],
       "path": "/skills-catalog/local/generate-image"
-    },
-    {
-      "name": "generate-test-skeletons",
-      "source": "local",
-      "description": "\"[sonnet] Generate ROI-prioritized test skeletons from specs before implementation\"",
-      "categories": [
-        "coding"
-      ],
-      "path": "/skills-catalog/local/homerun/generate-test-skeletons"
     },
     {
       "name": "gh-fix-ci",
@@ -293,15 +257,6 @@
         "general"
       ],
       "path": "/skills-catalog/local/github-ops"
-    },
-    {
-      "name": "implement",
-      "source": "local",
-      "description": "",
-      "categories": [
-        "coding"
-      ],
-      "path": "/skills-catalog/local/homerun/implement"
     },
     {
       "name": "internal-comms",
@@ -578,15 +533,6 @@
       "path": "/skills-catalog/local/pymeshlab"
     },
     {
-      "name": "quality-check",
-      "source": "local",
-      "description": "\"[sonnet/haiku-tier] Multi-phase quality pipeline: lint, types, structure, tests, recheck. Haiku-tier tasks skip LLM phases.\"",
-      "categories": [
-        "coding"
-      ],
-      "path": "/skills-catalog/local/homerun/quality-check"
-    },
-    {
       "name": "remotion",
       "source": "local",
       "description": "Best practices for Remotion - Video creation in React",
@@ -604,24 +550,6 @@
         "general"
       ],
       "path": "/skills-catalog/local/retro"
-    },
-    {
-      "name": "reverse-engineer",
-      "source": "local",
-      "description": "\"[opus] Generate PRD, ADR, and TECHNICAL_DESIGN from an existing codebase\"",
-      "categories": [
-        "coding"
-      ],
-      "path": "/skills-catalog/local/homerun/reverse-engineer"
-    },
-    {
-      "name": "review",
-      "source": "local",
-      "description": "",
-      "categories": [
-        "coding"
-      ],
-      "path": "/skills-catalog/local/homerun/review"
     },
     {
       "name": "review-specialists",
@@ -660,15 +588,6 @@
       "path": "/skills-catalog/local/static-analysis/skills/sarif-parsing"
     },
     {
-      "name": "scope-analysis",
-      "source": "local",
-      "description": "",
-      "categories": [
-        "coding"
-      ],
-      "path": "/skills-catalog/local/homerun/scope-analysis"
-    },
-    {
       "name": "semgrep",
       "source": "local",
       "description": ">-",
@@ -686,15 +605,6 @@
         "general"
       ],
       "path": "/skills-catalog/local/sentry"
-    },
-    {
-      "name": "setup-quality-gates",
-      "source": "local",
-      "description": "\"[haiku] Set up Claude Code hooks for automatic lint, typecheck, and auto-format enforcement\"",
-      "categories": [
-        "coding"
-      ],
-      "path": "/skills-catalog/local/homerun/setup-quality-gates"
     },
     {
       "name": "simulation-orchestrator",
@@ -733,15 +643,6 @@
       "path": "/skills-catalog/local/materials-simulation-skills/skills/hpc-deployment/slurm-job-script-generator"
     },
     {
-      "name": "spec-review",
-      "source": "local",
-      "description": "\"[sonnet] Review specification documents for consistency, completeness, and testability before planning\"",
-      "categories": [
-        "coding"
-      ],
-      "path": "/skills-catalog/local/homerun/spec-review"
-    },
-    {
       "name": "sprint-plan",
       "source": "local",
       "description": "\"Plan a sprint with capacity estimation, story selection, dependency mapping, and risk identification. Use when preparing for sprint planning, estimating team capacity, selecting stories, or balancing sprint scope against velocity.\"",
@@ -769,33 +670,6 @@
       "path": "/skills-catalog/local/summarize-meeting"
     },
     {
-      "name": "systematic-debugging",
-      "source": "local",
-      "description": "",
-      "categories": [
-        "coding"
-      ],
-      "path": "/skills-catalog/local/homerun/systematic-debugging"
-    },
-    {
-      "name": "task-decomposition",
-      "source": "local",
-      "description": "",
-      "categories": [
-        "coding"
-      ],
-      "path": "/skills-catalog/local/homerun/task-decomposition"
-    },
-    {
-      "name": "team-lead",
-      "source": "local",
-      "description": "\"Guide implementation orchestration — dispatch implementers, track progress, run quality gate\"",
-      "categories": [
-        "coding"
-      ],
-      "path": "/skills-catalog/local/homerun/team-lead"
-    },
-    {
       "name": "technical-analysis",
       "source": "local",
       "description": "Compute RSI, MACD, Bollinger Bands, EMA, and ATR for any stock ticker and return a signal summary. Use when you need technical indicators or want to know if a stock is overbought/oversold, trending, or showing bullish/bearish signals.",
@@ -803,15 +677,6 @@
         "general"
       ],
       "path": "/skills-catalog/local/technical-analysis"
-    },
-    {
-      "name": "test-driven-development",
-      "source": "local",
-      "description": "",
-      "categories": [
-        "coding"
-      ],
-      "path": "/skills-catalog/local/homerun/test-driven-development"
     },
     {
       "name": "tilesheet-sprites",
@@ -832,15 +697,6 @@
       "path": "/skills-catalog/local/materials-simulation-skills/skills/core-numerical/time-stepping"
     },
     {
-      "name": "using-git-worktrees",
-      "source": "local",
-      "description": "",
-      "categories": [
-        "coding"
-      ],
-      "path": "/skills-catalog/local/homerun/using-git-worktrees"
-    },
-    {
       "name": "visual-explainer",
       "source": "local",
       "description": "Generate beautiful, self-contained HTML pages that visually explain systems, code changes, plans, and data. Use when the user asks for a diagram, architecture overview, diff review, plan review, project recap, comparison table, or any visual explanation of technical concepts. Also use proactively when you are about to render a complex ASCII table (4+ rows or 3+ columns) — present it as a styled HTML page instead.",
@@ -848,15 +704,6 @@
         "general"
       ],
       "path": "/skills-catalog/local/visual-explainer"
-    },
-    {
-      "name": "walkthrough",
-      "source": "local",
-      "description": "\"[sonnet] Generate Playwright walkthrough scripts from user journeys for demo recordings\"",
-      "categories": [
-        "coding"
-      ],
-      "path": "/skills-catalog/local/homerun/walkthrough"
     },
     {
       "name": "webapp-testing",
