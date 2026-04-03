@@ -1,10 +1,13 @@
 #!/bin/bash
-# Sync marketplace plugin skills into container/skills-catalog/plugins/
-# Reads installed_plugins.json to find active versions, copies their skills.
-# Safe to run when no plugins are installed (produces empty plugins dir).
+# Sync marketplace plugins into the container build context.
+# Reads installed_plugins.json to find active versions.
+# Safe to run when no plugins are installed (produces empty dirs).
 #
-# Plugins with an agents/ directory are also staged in container/agent-plugins/
-# so the Dockerfile can install them as full Claude Code plugins.
+# All non-excluded plugins are staged in full to container/agent-plugins/
+# so the Dockerfile installs them as complete Claude Code plugins
+# (agents/, hooks/, cookbooks/, skills/, commands/, etc.).
+#
+# Skills are also indexed in container/skills-catalog/plugins/ for catalog.json.
 
 set -e
 
@@ -68,28 +71,25 @@ echo "$INSTALL_PATHS" | while IFS=$'\t' read -r PLUGIN_NAME INSTALL_PATH; do
     continue
   fi
 
-  SKILLS_DIR="$INSTALL_PATH/skills"
-  if [ ! -d "$SKILLS_DIR" ]; then
-    echo "  Plugin '$PLUGIN_NAME' has no skills/ directory — skipping"
-    continue
-  fi
-
   echo "  Syncing plugin: $PLUGIN_NAME from $INSTALL_PATH"
-  DEST="$CATALOG_DIR/$PLUGIN_NAME"
-  mkdir -p "$DEST"
 
-  for SKILL_DIR in "$SKILLS_DIR"/*/; do
-    [ -d "$SKILL_DIR" ] || continue
-    SKILL_NAME=$(basename "$SKILL_DIR")
-    cp -r "$SKILL_DIR" "$DEST/$SKILL_NAME"
-    echo "    Copied skill: $SKILL_NAME"
-  done
+  # Stage the full plugin directory for installation inside the container.
+  # This includes agents/, hooks/, cookbooks/, skills/, commands/, templates/,
+  # diagrams/, evals/, references/, scripts/, and any other plugin files.
+  cp -r "$INSTALL_PATH" "$AGENT_PLUGINS_DIR/$PLUGIN_NAME"
+  echo "    Staged full plugin"
 
-  # Plugins with agent definitions are staged for full installation.
-  # Enables subagent_type: "<name>:<agent>" dispatch inside the container.
-  if [ -d "$INSTALL_PATH/agents" ]; then
-    echo "  Staging full plugin for agent installation: $PLUGIN_NAME"
-    cp -r "$INSTALL_PATH" "$AGENT_PLUGINS_DIR/$PLUGIN_NAME"
+  # Also index skills into the catalog for catalog.json generation.
+  SKILLS_DIR="$INSTALL_PATH/skills"
+  if [ -d "$SKILLS_DIR" ]; then
+    DEST="$CATALOG_DIR/$PLUGIN_NAME"
+    mkdir -p "$DEST"
+    for SKILL_DIR in "$SKILLS_DIR"/*/; do
+      [ -d "$SKILL_DIR" ] || continue
+      SKILL_NAME=$(basename "$SKILL_DIR")
+      cp -r "$SKILL_DIR" "$DEST/$SKILL_NAME"
+      echo "    Indexed skill: $SKILL_NAME"
+    done
   fi
 done
 
