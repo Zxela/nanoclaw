@@ -1277,6 +1277,87 @@
         "engineering"
       ],
       "path": "/skills-catalog/local/pymeshlab"
+    },
+    {
+      "name": "office-hours",
+      "source": "local",
+      "description": "YC-style product dialogue to stress-test ideas. Use when asked to \"brainstorm this\", \"I have an idea\", \"is this worth building\", \"office hours\", or when describing a new product concept.",
+      "categories": [
+        "general"
+      ],
+      "path": "/skills-catalog/local/office-hours"
+    },
+    {
+      "name": "plan-ceo-review",
+      "source": "local",
+      "description": "CEO/founder-mode plan review with four scope modes (expand, selective expand, hold, reduce). Use when asked to \"think bigger\", \"expand scope\", \"strategy review\", \"rethink this\", \"is this ambitious enough\", or \"CEO review\".",
+      "categories": [
+        "general"
+      ],
+      "path": "/skills-catalog/local/plan-ceo-review"
+    },
+    {
+      "name": "plan-eng-review",
+      "source": "local",
+      "description": "Engineering manager-mode plan review: architecture, data flow, edge cases, test coverage, performance. Use when asked to \"review the architecture\", \"engineering review\", \"lock in the plan\", or \"technical review\" before coding starts.",
+      "categories": [
+        "general"
+      ],
+      "path": "/skills-catalog/local/plan-eng-review"
+    },
+    {
+      "name": "autoplan",
+      "source": "local",
+      "description": "Full automated review pipeline: runs office-hours \u2192 CEO review \u2192 eng review sequentially, auto-decides using 6 principles, surfaces only taste/judgment calls at the end. Use when asked to \"auto review\", \"autoplan\", \"full review pipeline\", or \"make the decisions for me\".",
+      "categories": [
+        "general"
+      ],
+      "path": "/skills-catalog/local/autoplan"
+    },
+    {
+      "name": "cso",
+      "source": "local",
+      "description": "Chief Security Officer mode: infrastructure-first security audit covering secrets, dependency supply chain, CI/CD, LLM trust boundaries, OWASP Top 10, and STRIDE threat modeling. Use when asked to do a \"security audit\", \"threat model\", \"pentest review\", \"OWASP\", or \"CSO review\".",
+      "categories": [
+        "coding"
+      ],
+      "path": "/skills-catalog/local/cso"
+    },
+    {
+      "name": "review-specialists",
+      "source": "local",
+      "description": "Deep specialist code review with 7 lenses: Security, Performance, API Contract, Data Migration, Testing, Maintainability, Red Team. Use when asked for a \"specialist review\", \"deep review\", \"security review of this code\", \"performance review\", or \"red team this code\".",
+      "categories": [
+        "coding"
+      ],
+      "path": "/skills-catalog/local/review-specialists"
+    },
+    {
+      "name": "retro",
+      "source": "local",
+      "description": "Weekly engineering retrospective: analyzes git commit history, work patterns, hotspots, quality signals, and per-author contributions. Use when asked for a \"weekly retro\", \"what did we ship\", \"engineering retrospective\", or \"sprint review\".",
+      "categories": [
+        "general"
+      ],
+      "path": "/skills-catalog/local/retro"
+    },
+    {
+      "name": "design-shotgun",
+      "source": "local",
+      "description": "Multi-variant design exploration: generates 3-5 distinct approaches simultaneously with tradeoff analysis and a recommendation. Use when asked to \"shotgun this\", \"give me variants\", \"explore approaches\", \"show me options\", or \"brainstorm designs\".",
+      "categories": [
+        "general"
+      ],
+      "path": "/skills-catalog/local/design-shotgun"
+    },
+    {
+      "name": "careful",
+      "source": "local",
+      "description": "Safety guardrails before destructive/irreversible operations (rm -rf, DROP TABLE, git reset --hard, terraform destroy). Also freeze mode to lock code from changes. Use when asked to \"be careful\", \"freeze this\", \"lock the code\", \"don't touch X\", or invoke automatically before destructive commands.",
+      "categories": [
+        "general"
+      ],
+      "path": "/skills-catalog/local/careful"
     }
   ]
 }
