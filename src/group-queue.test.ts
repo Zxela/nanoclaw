@@ -101,7 +101,7 @@ describe('GroupQueue', () => {
 
   // --- Tasks prioritized over messages ---
 
-  it('drains tasks before messages for same group', async () => {
+  it('drains interactive messages before tasks for same group', async () => {
     const executionOrder: string[] = [];
     let resolveFirst: () => void;
 
@@ -133,10 +133,10 @@ describe('GroupQueue', () => {
     resolveFirst!();
     await vi.advanceTimersByTimeAsync(10);
 
-    // Task should have run before the second message check
+    // Interactive messages should drain before tasks
     expect(executionOrder[0]).toBe('messages'); // first call
-    expect(executionOrder[1]).toBe('task'); // task runs first in drain
-    // Messages would run after task completes
+    expect(executionOrder[1]).toBe('messages'); // pending messages drain first
+    // Task would run after messages complete
   });
 
   // --- Retry with backoff on failure ---

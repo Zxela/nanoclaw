@@ -183,6 +183,22 @@ export class GroupQueue {
   }
 
   /**
+   * Check if a thread already has pending messages queued (either waiting for
+   * a container slot or already running). Used by the message loop to avoid
+   * hot-polling the same unprocessed messages every POLL_INTERVAL.
+   */
+  isPending(groupJid: string, threadId: string): boolean {
+    const thread = this.threads.get(this.threadKey(groupJid, threadId));
+    if (thread?.active) return true;
+    const group = this.groups.get(groupJid);
+    if (!group) return false;
+    return (
+      group.pendingMessages.has(threadId) ||
+      group.waitingThreads.includes(threadId)
+    );
+  }
+
+  /**
    * Main entry point: enqueue a message check for a specific thread.
    */
   enqueueThreadMessageCheck(
@@ -797,22 +813,7 @@ export class GroupQueue {
 
     const group = this.getGroup(groupJid);
 
-    // Tasks first (they won't be re-discovered from SQLite like messages)
-    if (
-      group.pendingTasks.length > 0 &&
-      this.activeCount < MAX_CONCURRENT_CONTAINERS
-    ) {
-      const task = group.pendingTasks.shift()!;
-      this.runTask(groupJid, task).catch((err) =>
-        logger.error(
-          { groupJid, taskId: task.id, err },
-          'Unhandled error in runTask (drain)',
-        ),
-      );
-      return;
-    }
-
-    // Resume paused containers before starting new work from other groups
+    // Resume paused containers first — they already hold conversation state
     if (
       this.pausedQueue.length > 0 &&
       this.activeCount < MAX_CONCURRENT_CONTAINERS
@@ -821,6 +822,8 @@ export class GroupQueue {
       return;
     }
 
+    // Interactive messages before tasks — users waiting for a response
+    // should not be blocked by background scheduled tasks.
     // Drain waiting threads within this group first (before other groups)
     while (
       group.waitingThreads.length > 0 &&
@@ -858,6 +861,21 @@ export class GroupQueue {
       }
     }
 
+    // Scheduled tasks after interactive messages
+    if (
+      group.pendingTasks.length > 0 &&
+      this.activeCount < MAX_CONCURRENT_CONTAINERS
+    ) {
+      const task = group.pendingTasks.shift()!;
+      this.runTask(groupJid, task).catch((err) =>
+        logger.error(
+          { groupJid, taskId: task.id, err },
+          'Unhandled error in runTask (drain)',
+        ),
+      );
+      return;
+    }
+
     // Nothing pending for this group; check if other groups are waiting for a slot
     this.drainWaiting();
   }
@@ -870,19 +888,7 @@ export class GroupQueue {
       const nextJid = this.waitingGroups.shift()!;
       const group = this.getGroup(nextJid);
 
-      // Prioritize tasks over messages
-      if (group.pendingTasks.length > 0) {
-        const task = group.pendingTasks.shift()!;
-        this.runTask(nextJid, task).catch((err) =>
-          logger.error(
-            { groupJid: nextJid, taskId: task.id, err },
-            'Unhandled error in runTask (waiting)',
-          ),
-        );
-        break;
-      }
-
-      // Check waiting threads first, then generic pending messages
+      // Interactive messages first — users waiting for responses
       if (group.waitingThreads.length > 0) {
         const nextThreadId = group.waitingThreads.shift()!;
         if (group.pendingMessages.get(nextThreadId)) {
@@ -902,6 +908,18 @@ export class GroupQueue {
           logger.error(
             { groupJid: nextJid, threadId: nextThreadId, err },
             'Unhandled error in runForThread (waiting)',
+          ),
+        );
+        break;
+      }
+
+      // Then scheduled tasks
+      if (group.pendingTasks.length > 0) {
+        const task = group.pendingTasks.shift()!;
+        this.runTask(nextJid, task).catch((err) =>
+          logger.error(
+            { groupJid: nextJid, taskId: task.id, err },
+            'Unhandled error in runTask (waiting)',
           ),
         );
         break;

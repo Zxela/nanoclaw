@@ -715,7 +715,7 @@ async function startMessageLoop(): Promise<void> {
               ?.catch((err) =>
                 logger.warn({ chatJid, err }, 'Failed to set typing indicator'),
               );
-          } else {
+          } else if (!queue.isPending(chatJid, threadId)) {
             logger.info(
               { chatJid, threadId },
               'No active container, enqueuing for new container',
