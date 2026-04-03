@@ -83,6 +83,34 @@ When you learn something important:
 - Split files larger than 500 lines into folders
 - Keep an index in your memory for the files you create
 
+## Development Workflow (Homerun)
+
+For software development tasks, use the homerun workflow to produce high-quality output. The tier determines how much process overhead is applied — pick the lowest tier that fits.
+
+### Tier routing
+
+**Direct** — just do it, no homerun overhead:
+- Single-file changes, bug fixes, UI tweaks, style changes
+- Research, Q&A, one-off scripts, non-code tasks
+- "Fix X", "change Y", "what does Z do?"
+
+**Small** (homerun lite — 1-3 files, no spec needed):
+- Clear scope, well-defined feature addition
+- Load `homerun:implement` skill, spawn implementer + reviewer agents
+- Use typed JSON contracts between agents
+
+**Full** (complete homerun pipeline — new features, 4+ files):
+- New features with acceptance criteria, complex cross-cutting changes
+- Invoke `/create` command: discovery → spec → scope → tasks → implement → review → quality gate
+
+When uncertain between tiers, apply this rule: if you'd need to ask a clarifying question about scope, use Small or Full. If the scope is obvious from the request, use Direct or Small.
+
+### For Small and Full tier tasks
+- Load skills from `~/.claude/plugins/homerun/skills/` on demand (don't pre-load all)
+- Agent definitions for implementer, reviewer, diagnostician are at `~/.claude/plugins/homerun/agents/`
+- Use typed JSON signal contracts between agents (`IMPLEMENTATION_COMPLETE`, `APPROVED`, `NEEDS_REWORK`)
+- Reviewer agents are always read-only (enforced by their agent definition)
+
 ## Skills Catalog
 
 You have a catalog of available skills at `/skills-catalog/catalog.json`.
@@ -92,7 +120,7 @@ If you need a skill that isn't pre-loaded, check the catalog and activate it:
 
 ```bash
 # View available skills
-cat /skills-catalog/catalog.json | jq '.skills[] | {name, description, categories}'
+cat /skills-catalog/catalog.json | python3 -c "import sys,json; [print(s['name'],'-',s['description'][:60]) for s in json.load(sys.stdin)['skills']]"
 
 # Activate a skill
 cp -r /skills-catalog/<path-from-catalog> ~/.claude/skills/<skill-name>

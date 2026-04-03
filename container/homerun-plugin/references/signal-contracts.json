@@ -1,0 +1,506 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "version": "1.0.0",
+  "description": "Signal envelope schema and contracts for homerun skills",
+
+  "envelope_schema": {
+    "type": "object",
+    "required": ["signal", "timestamp", "source", "payload"],
+    "properties": {
+      "signal": {
+        "type": "string",
+        "description": "Signal name (DISCOVERY_COMPLETE, APPROVED, etc.)"
+      },
+      "timestamp": {
+        "type": "string",
+        "format": "date-time",
+        "description": "ISO8601 timestamp of signal emission"
+      },
+      "source": {
+        "type": "object",
+        "required": ["skill"],
+        "properties": {
+          "skill": {
+            "type": "string",
+            "description": "Skill that emitted the signal"
+          },
+          "task_id": {
+            "type": "string",
+            "description": "Task ID if applicable"
+          },
+          "attempt": {
+            "type": "integer",
+            "description": "Attempt number if retry"
+          }
+        }
+      },
+      "payload": {
+        "type": "object",
+        "description": "Signal-specific data"
+      },
+      "envelope_version": {
+        "type": "string",
+        "default": "1.0.0"
+      }
+    }
+  },
+
+  "signals": {
+    "DISCOVERY_COMPLETE": {
+      "producer": "homerun:discovery",
+      "envelope_example": {
+        "signal": "DISCOVERY_COMPLETE",
+        "timestamp": "2026-01-25T10:30:00Z",
+        "source": { "skill": "homerun:discovery" },
+        "payload": {
+          "worktree_path": "/path/to/worktree",
+          "branch": "create/feature-uuid",
+          "spec_paths": {
+            "prd": "docs/PRD.md",
+            "adr": "docs/ADR.md",
+            "technical_design": "docs/TECHNICAL_DESIGN.md",
+            "wireframes": "docs/WIREFRAMES.md"
+          },
+          "user_stories_count": 3,
+          "acceptance_criteria_count": 8
+        },
+        "envelope_version": "1.0.0"
+      }
+    },
+
+    "SCOPE_ANALYSIS_COMPLETE": {
+      "producer": "homerun:scope-analysis",
+      "envelope_example": {
+        "signal": "SCOPE_ANALYSIS_COMPLETE",
+        "timestamp": "2026-02-27T10:30:00Z",
+        "source": { "skill": "homerun:scope-analysis" },
+        "payload": {
+          "scope_file": "docs/scope-analysis.json",
+          "components_count": 5,
+          "acceptance_criteria_count": 12,
+          "all_criteria_testable": true,
+          "untestable_criteria": []
+        },
+        "envelope_version": "1.0.0"
+      }
+    },
+
+    "PLANNING_COMPLETE": {
+      "producer": "homerun:task-decomposition",
+      "envelope_example": {
+        "signal": "PLANNING_COMPLETE",
+        "timestamp": "2026-02-27T10:45:00Z",
+        "source": { "skill": "homerun:task-decomposition" },
+        "payload": {
+          "tasks_count": 8,
+          "tasks_file": "docs/tasks.json",
+          "dependency_graph_valid": true,
+          "coverage": {
+            "user_stories": 3,
+            "acceptance_criteria": 12
+          }
+        },
+        "envelope_version": "1.0.0"
+      }
+    },
+
+    "IMPLEMENTATION_COMPLETE": {
+      "producer": "homerun:implement",
+      "envelope_example": {
+        "signal": "IMPLEMENTATION_COMPLETE",
+        "timestamp": "2026-01-25T11:00:00Z",
+        "source": {
+          "skill": "homerun:implement",
+          "task_id": "001",
+          "attempt": 1
+        },
+        "payload": {
+          "files_changed": ["src/feature.ts"],
+          "test_file": "tests/feature.test.ts",
+          "commit_hash": "abc1234",
+          "acceptance_criteria_met": [
+            {
+              "criterion": "AC-001",
+              "implementation_file": "src/feature.ts:45",
+              "test_location": "tests/feature.test.ts:23"
+            }
+          ],
+          "hard_gate_results": { "tests": 0, "types": 0, "lint": 0 },
+          "verification_level": "L2",
+          "verification_attempted": ["L1", "L2"]
+        },
+        "envelope_version": "1.0.0"
+      }
+    },
+
+    "NEEDS_REWORK": {
+      "producer": "homerun:implement",
+      "envelope_example": {
+        "signal": "NEEDS_REWORK",
+        "timestamp": "2026-01-25T11:00:00Z",
+        "source": {
+          "skill": "homerun:implement",
+          "task_id": "001",
+          "attempt": 1
+        },
+        "payload": {
+          "findings": [
+            {
+              "check": "placeholder_scan",
+              "issue": "TODO comment found in src/feature.ts:23"
+            }
+          ],
+          "hard_gate_results": { "tests": 0, "types": 0, "lint": 1 }
+        },
+        "envelope_version": "1.0.0"
+      }
+    },
+
+    "IMPLEMENTATION_BLOCKED": {
+      "producer": "homerun:implement",
+      "envelope_example": {
+        "signal": "IMPLEMENTATION_BLOCKED",
+        "timestamp": "2026-01-25T11:00:00Z",
+        "source": {
+          "skill": "homerun:implement",
+          "task_id": "001",
+          "attempt": 1
+        },
+        "payload": {
+          "reason": "Cannot find the User model referenced in TECHNICAL_DESIGN.md",
+          "blocker_type": "missing_dependency",
+          "blocker_type_options": ["missing_dependency", "unclear_requirements", "technical_constraint", "test_failure", "tautological_test"],
+          "details": ["Task 001 should have created src/models/user.ts"],
+          "suggested_resolution": "Run task 001 first or verify task ordering"
+        },
+        "envelope_version": "1.0.0"
+      }
+    },
+
+    "APPROVED": {
+      "producer": "homerun:review",
+      "envelope_example": {
+        "signal": "APPROVED",
+        "timestamp": "2026-01-25T11:15:00Z",
+        "source": {
+          "skill": "homerun:review",
+          "task_id": "001"
+        },
+        "payload": {
+          "summary": "User authentication service implemented with password hashing",
+          "verified": [
+            {
+              "criterion": "AC-001",
+              "description": "User can register with email/password",
+              "implementation_file": "src/services/auth.ts:45",
+              "test_file": "tests/services/auth.test.ts:12"
+            }
+          ]
+        },
+        "envelope_version": "1.0.0"
+      }
+    },
+
+    "REJECTED": {
+      "producer": "homerun:review",
+      "envelope_example": {
+        "signal": "REJECTED",
+        "timestamp": "2026-01-25T11:15:00Z",
+        "source": {
+          "skill": "homerun:review",
+          "task_id": "001"
+        },
+        "payload": {
+          "summary": "Missing test for AC-002",
+          "issues": [
+            {
+              "criterion": "AC-002",
+              "severity": "medium",
+              "description": "No test covers error handling case",
+              "file": "src/feature.ts",
+              "line": 45
+            }
+          ],
+          "required_fixes": ["Add test for error handling"]
+        },
+        "envelope_version": "1.0.0"
+      }
+    },
+
+    "VALIDATION_ERROR": {
+      "producer": "any",
+      "envelope_example": {
+        "signal": "VALIDATION_ERROR",
+        "timestamp": "2026-01-25T11:00:00Z",
+        "source": { "skill": "homerun:implement" },
+        "payload": {
+          "error_type": "invalid_input",
+          "errors": [
+            {
+              "path": "$.task.acceptance_criteria",
+              "message": "acceptance_criteria array is empty",
+              "expected": "non-empty array",
+              "received": "[]"
+            }
+          ]
+        },
+        "envelope_version": "1.0.0"
+      }
+    },
+
+    "COVERAGE_GAPS_DETECTED": {
+      "producer": "homerun:team-lead",
+      "envelope_example": {
+        "signal": "COVERAGE_GAPS_DETECTED",
+        "timestamp": "2026-01-25T12:00:00Z",
+        "source": { "skill": "homerun:team-lead" },
+        "payload": {
+          "errors": [
+            {
+              "type": "ac_uncovered",
+              "criterion": "AC-005",
+              "message": "Acceptance criterion AC-005 has no completed tasks"
+            }
+          ],
+          "coverage": {
+            "user_stories": { "total": 3, "covered": 3 },
+            "acceptance_criteria": { "total": 8, "covered": 7 }
+          }
+        },
+        "envelope_version": "1.0.0"
+      }
+    },
+
+    "SPEC_REVIEW_COMPLETE": {
+      "producer": "homerun:spec-review",
+      "envelope_example": {
+        "signal": "SPEC_REVIEW_COMPLETE",
+        "timestamp": "2026-01-25T10:35:00Z",
+        "source": { "skill": "homerun:spec-review" },
+        "payload": {
+          "verdict": "approved_with_scope_warning",
+          "issues": { "high": 0, "medium": 1, "low": 2 },
+          "details": [
+            {
+              "severity": "medium",
+              "category": "incomplete",
+              "description": "TECHNICAL_DESIGN missing error handling for /register endpoint",
+              "file": "TECHNICAL_DESIGN.md",
+              "fix": "Add error responses table"
+            }
+          ]
+        },
+        "envelope_version": "1.0.0"
+      }
+    },
+
+    "DIAGNOSIS_COMPLETE": {
+      "producer": "homerun:diagnose",
+      "envelope_example": {
+        "signal": "DIAGNOSIS_COMPLETE",
+        "timestamp": "2026-01-25T11:30:00Z",
+        "source": { "skill": "homerun:diagnose" },
+        "payload": {
+          "root_cause": {
+            "hypothesis": "Validation middleware strips password field before auth service",
+            "evidence": [
+              {
+                "description": "validation.ts:23 deletes req.body.password",
+                "source": "src/middleware/validation.ts:23",
+                "supports": "Password field removed before hash"
+              }
+            ],
+            "alternatives_considered": [
+              {
+                "hypothesis": "Client not sending password field",
+                "rejected_because": "Request logging shows password in raw body"
+              }
+            ],
+            "verified": true
+          },
+          "confidence": "high",
+          "solutions": [
+            {
+              "title": "Remove password from stripped fields list",
+              "type": "direct",
+              "files": ["src/middleware/validation.ts"],
+              "risk": "low"
+            }
+          ],
+          "recommendation": {
+            "solution_index": 0,
+            "rationale": "Direct fix at root cause, minimal change"
+          }
+        },
+        "envelope_version": "1.0.0"
+      }
+    },
+
+    "DIAGNOSIS_INCONCLUSIVE": {
+      "producer": "homerun:diagnose",
+      "envelope_example": {
+        "signal": "DIAGNOSIS_INCONCLUSIVE",
+        "timestamp": "2026-01-25T11:30:00Z",
+        "source": { "skill": "homerun:diagnose" },
+        "payload": {
+          "investigated": {
+            "hypotheses_tested": 3,
+            "evidence_collected": 5,
+            "best_guess": "Timing issue in async password hashing"
+          },
+          "next_steps": [
+            "Add logging at auth.ts:40-50",
+            "Run under load to reproduce"
+          ],
+          "confidence": "low"
+        },
+        "envelope_version": "1.0.0"
+      }
+    },
+
+    "QUALITY_CHECK_COMPLETE": {
+      "producer": "homerun:quality-check",
+      "envelope_example": {
+        "signal": "QUALITY_CHECK_COMPLETE",
+        "timestamp": "2026-01-25T11:20:00Z",
+        "source": { "skill": "homerun:quality-check", "task_id": "002" },
+        "payload": {
+          "verdict": "pass_with_fixes",
+          "phases": {
+            "lint": { "status": "fixed", "issues_found": 3, "issues_fixed": 3 },
+            "types": { "status": "pass", "issues_found": 0, "issues_fixed": 0 },
+            "structure": { "status": "pass", "issues_found": 0, "issues_fixed": 0 },
+            "tests": { "status": "pass", "issues_found": 0, "issues_fixed": 0 },
+            "recheck": { "status": "pass", "issues_found": 0, "issues_fixed": 0 }
+          },
+          "fixes_applied": [
+            { "phase": "lint", "description": "Fixed formatting", "file": "src/services/auth.ts" }
+          ],
+          "unresolved": []
+        },
+        "envelope_version": "1.0.0"
+      }
+    },
+
+    "REVERSE_ENGINEER_COMPLETE": {
+      "producer": "homerun:reverse-engineer",
+      "envelope_example": {
+        "signal": "REVERSE_ENGINEER_COMPLETE",
+        "timestamp": "2026-01-25T12:00:00Z",
+        "source": { "skill": "homerun:reverse-engineer" },
+        "payload": {
+          "output_dir": "/home/user/.claude/homerun/a1b2c3d4/myapp-reverse-engineered",
+          "documents": {
+            "prd": "/home/user/.claude/homerun/a1b2c3d4/myapp-reverse-engineered/PRD.md",
+            "adr": "/home/user/.claude/homerun/a1b2c3d4/myapp-reverse-engineered/ADR.md",
+            "technical_design": "/home/user/.claude/homerun/a1b2c3d4/myapp-reverse-engineered/TECHNICAL_DESIGN.md"
+          },
+          "coverage": {
+            "files_analyzed": 45,
+            "components_identified": 8,
+            "models_extracted": 5,
+            "endpoints_found": 12,
+            "tests_found": 23
+          },
+          "confidence": {
+            "architecture": "high",
+            "data_models": "high",
+            "api_contracts": "medium",
+            "business_logic": "medium"
+          }
+        },
+        "envelope_version": "1.0.0"
+      }
+    },
+
+    "TEST_SKELETONS_COMPLETE": {
+      "producer": "homerun:generate-test-skeletons",
+      "envelope_example": {
+        "signal": "TEST_SKELETONS_COMPLETE",
+        "timestamp": "2026-01-25T10:50:00Z",
+        "source": { "skill": "homerun:generate-test-skeletons" },
+        "payload": {
+          "skeletons_generated": 15,
+          "test_files_created": [
+            "tests/models/user.test.ts",
+            "tests/services/auth.test.ts"
+          ],
+          "coverage": {
+            "acceptance_criteria_total": 12,
+            "criteria_with_skeletons": 10,
+            "criteria_skipped": 2
+          },
+          "roi_distribution": {
+            "must_test": 8,
+            "should_test": 2,
+            "could_test": 2
+          }
+        },
+        "envelope_version": "1.0.0"
+      }
+    },
+
+    "WALKTHROUGH_COMPLETE": {
+      "producer": "homerun:walkthrough",
+      "envelope_example": {
+        "signal": "WALKTHROUGH_COMPLETE",
+        "timestamp": "2026-01-25T12:30:00Z",
+        "source": { "skill": "homerun:walkthrough" },
+        "payload": {
+          "walkthroughs": [
+            {
+              "user_story": "US-001",
+              "script_path": "walkthroughs/registration-flow.spec.ts",
+              "steps": 6,
+              "type": "playwright"
+            }
+          ],
+          "config_path": "playwright.walkthrough.config.ts",
+          "run_command": "npx playwright test --config=playwright.walkthrough.config.ts"
+        },
+        "envelope_version": "1.0.0"
+      }
+    },
+
+    "TEAM_LEAD_COMPLETE": {
+      "producer": "homerun:team-lead",
+      "envelope_example": {
+        "signal": "TEAM_LEAD_COMPLETE",
+        "timestamp": "2026-02-24T15:00:00Z",
+        "source": { "skill": "homerun:team-lead" },
+        "payload": {
+          "tasks_total": 8,
+          "tasks_completed": 7,
+          "tasks_skipped": 1,
+          "quality_verdict": "pass_with_fixes"
+        },
+        "envelope_version": "1.0.0"
+      }
+    },
+
+    "REVIEW_DISPATCHED": {
+      "producer": "homerun:team-lead",
+      "envelope_example": {
+        "signal": "REVIEW_DISPATCHED",
+        "timestamp": "2026-02-27T15:00:00Z",
+        "source": { "skill": "homerun:team-lead" },
+        "payload": {
+          "task_id": "003",
+          "reviewer_slot": 1,
+          "max_concurrent": 2,
+          "review_mode": "incremental"
+        },
+        "envelope_version": "1.0.0"
+      }
+    }
+  },
+
+  "validation": {
+    "quick_check": "function isValidEnvelope(signal) { const required = ['signal', 'timestamp', 'source', 'payload']; return required.every(field => signal.hasOwnProperty(field)) && typeof signal.source === 'object' && signal.source.skill; }",
+    "common_errors": [
+      { "error": "Missing timestamp", "cause": "Old skill version", "fix": "Update skill or add manually" },
+      { "error": "No source.skill", "cause": "Skill not identified", "fix": "Add skill name to source" },
+      { "error": "Payload is string", "cause": "JSON not parsed", "fix": "Parse payload as object" }
+    ]
+  }
+}

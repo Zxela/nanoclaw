@@ -31,6 +31,7 @@ RUN apt-get update && apt-get install -y \
     openscad \
     xvfb \
     zip \
+    jq \
     python3 \
     python3-pip \
     python3-venv \
@@ -95,8 +96,17 @@ RUN chmod +x /usr/local/bin/scad-render
 # Owned by root, read-only to container's node user — catalog is reference-only
 COPY skills-catalog/ /skills-catalog/
 
+# Install homerun plugin for Claude Code
+# Copies homerun's agents, skills, and commands into the Claude plugin directory.
+# The plugin provides orchestrated dev workflows with typed inter-agent contracts.
+COPY homerun-plugin/ /home/node/.claude/plugins/homerun/
+RUN mkdir -p /home/node/.claude/plugins && \
+    echo '{"plugins":{"homerun@local":[{"installPath":"/home/node/.claude/plugins/homerun","version":"5.7.1"}]}}' \
+    > /home/node/.claude/plugins/installed_plugins.json
+
 # Set ownership to node user (non-root) for writable directories
-RUN chown -R node:node /workspace && chmod 777 /home/node
+RUN chown -R node:node /workspace && chmod 777 /home/node && \
+    chown -R node:node /home/node/.claude
 
 # Switch to non-root user (required for --dangerously-skip-permissions)
 USER node

@@ -1,0 +1,10 @@
+{
+  "name": "homerun",
+  "description": "Orchestrated development workflow from idea to implementation with isolated agent contexts",
+  "version": "5.7.1",
+  "author": {
+    "name": "zxela"
+  },
+  "license": "MIT",
+  "keywords": ["workflow", "orchestration", "prd", "adr", "planning", "implementation", "homerun", "diagnosis", "review", "quality", "reverse-engineering", "subagents", "agents"]
+}

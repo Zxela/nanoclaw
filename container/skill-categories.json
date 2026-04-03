@@ -15,7 +15,7 @@
     "systematic-debugging": ["coding"],
     "test-driven-development": ["coding"],
     "using-git-worktrees": ["coding"],
-    "using-superpowers": ["coding", "general"],
+    "using-superpowers": [],
     "verification-before-completion": ["coding"],
     "writing-plans": ["coding"],
     "writing-skills": ["coding"],
@@ -39,6 +39,19 @@
     "summarize-meeting": ["general"],
     "remotion": ["coding", "creative"],
     "github-issue-creator": ["coding", "general"],
-    "auto-test-generator": ["coding"]
+    "auto-test-generator": ["coding"],
+    "implement": ["coding"],
+    "review": ["coding"],
+    "quality-check": ["coding"],
+    "diagnose": ["coding"],
+    "reverse-engineer": ["coding"],
+    "walkthrough": ["coding"],
+    "team-lead": ["coding"],
+    "discovery": ["coding"],
+    "task-decomposition": ["coding"],
+    "scope-analysis": ["coding"],
+    "spec-review": ["coding"],
+    "generate-test-skeletons": ["coding"],
+    "setup-quality-gates": ["coding"]
   }
 }

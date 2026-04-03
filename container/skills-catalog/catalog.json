@@ -1,51 +1,6 @@
 {
   "skills": [
     {
-      "name": "advanced-evaluation",
-      "source": "plugin:agent-architecture",
-      "description": "This skill should be used when the user asks to \"implement LLM-as-judge\", \"compare model outputs\", \"create evaluation rubrics\", \"mitigate evaluation bias\", or mentions direct scoring, pairwise comparison, position bias, evaluation pipelines, or automated quality assessment.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-architecture/advanced-evaluation"
-    },
-    {
-      "name": "advanced-evaluation",
-      "source": "plugin:agent-development",
-      "description": "This skill should be used when the user asks to \"implement LLM-as-judge\", \"compare model outputs\", \"create evaluation rubrics\", \"mitigate evaluation bias\", or mentions direct scoring, pairwise comparison, position bias, evaluation pipelines, or automated quality assessment.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-development/advanced-evaluation"
-    },
-    {
-      "name": "advanced-evaluation",
-      "source": "plugin:agent-evaluation",
-      "description": "This skill should be used when the user asks to \"implement LLM-as-judge\", \"compare model outputs\", \"create evaluation rubrics\", \"mitigate evaluation bias\", or mentions direct scoring, pairwise comparison, position bias, evaluation pipelines, or automated quality assessment.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-evaluation/advanced-evaluation"
-    },
-    {
-      "name": "advanced-evaluation",
-      "source": "plugin:cognitive-architecture",
-      "description": "This skill should be used when the user asks to \"implement LLM-as-judge\", \"compare model outputs\", \"create evaluation rubrics\", \"mitigate evaluation bias\", or mentions direct scoring, pairwise comparison, position bias, evaluation pipelines, or automated quality assessment.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/cognitive-architecture/advanced-evaluation"
-    },
-    {
-      "name": "advanced-evaluation",
-      "source": "plugin:context-engineering-fundamentals",
-      "description": "This skill should be used when the user asks to \"implement LLM-as-judge\", \"compare model outputs\", \"create evaluation rubrics\", \"mitigate evaluation bias\", or mentions direct scoring, pairwise comparison, position bias, evaluation pipelines, or automated quality assessment.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/context-engineering-fundamentals/advanced-evaluation"
-    },
-    {
       "name": "agent-browser",
       "source": "local",
       "description": "Browse the web for any task — research topics, read articles, interact with web apps, fill forms, take screenshots, extract data, and test web pages. Use whenever a browser would be useful, not just when the user explicitly asks.",
@@ -110,59 +65,22 @@
       "path": "/skills-catalog/local/backtest"
     },
     {
-      "name": "bdi-mental-states",
-      "source": "plugin:agent-architecture",
-      "description": "This skill should be used when the user asks to \"model agent mental states\", \"implement BDI architecture\", \"create belief-desire-intention models\", \"transform RDF to beliefs\", \"build cognitive agent\", or mentions BDI ontology, mental state modeling, rational agency, or neuro-symbolic AI integration.",
+      "name": "build123d",
+      "source": "local",
+      "description": "Create parametric 3D models with Build123d (Python CAD on OpenCASCADE). Trigger on 'parametric model', 'Python CAD', 'complex geometry', 'STEP export', 'assembly model', 'build123d', or when the user needs advanced solid modeling beyond basic OpenSCAD primitives. Do NOT trigger for simple box/cylinder shapes where OpenSCAD suffices.",
       "categories": [
         "general"
       ],
-      "path": "/skills-catalog/plugins/agent-architecture/bdi-mental-states"
+      "path": "/skills-catalog/local/build123d"
     },
     {
-      "name": "bdi-mental-states",
-      "source": "plugin:agent-development",
-      "description": "This skill should be used when the user asks to \"model agent mental states\", \"implement BDI architecture\", \"create belief-desire-intention models\", \"transform RDF to beliefs\", \"build cognitive agent\", or mentions BDI ontology, mental state modeling, rational agency, or neuro-symbolic AI integration.",
+      "name": "careful",
+      "source": "local",
+      "description": "Safety guardrails before destructive or irreversible operations. Activates automatically before dangerous commands, and explicitly when asked to \"be careful\", \"freeze this\", \"lock the code\", \"don't touch X\", \"careful mode\", \"guard rails\".",
       "categories": [
         "general"
       ],
-      "path": "/skills-catalog/plugins/agent-development/bdi-mental-states"
-    },
-    {
-      "name": "bdi-mental-states",
-      "source": "plugin:agent-evaluation",
-      "description": "This skill should be used when the user asks to \"model agent mental states\", \"implement BDI architecture\", \"create belief-desire-intention models\", \"transform RDF to beliefs\", \"build cognitive agent\", or mentions BDI ontology, mental state modeling, rational agency, or neuro-symbolic AI integration.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-evaluation/bdi-mental-states"
-    },
-    {
-      "name": "bdi-mental-states",
-      "source": "plugin:cognitive-architecture",
-      "description": "This skill should be used when the user asks to \"model agent mental states\", \"implement BDI architecture\", \"create belief-desire-intention models\", \"transform RDF to beliefs\", \"build cognitive agent\", or mentions BDI ontology, mental state modeling, rational agency, or neuro-symbolic AI integration.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/cognitive-architecture/bdi-mental-states"
-    },
-    {
-      "name": "bdi-mental-states",
-      "source": "plugin:context-engineering-fundamentals",
-      "description": "This skill should be used when the user asks to \"model agent mental states\", \"implement BDI architecture\", \"create belief-desire-intention models\", \"transform RDF to beliefs\", \"build cognitive agent\", or mentions BDI ontology, mental state modeling, rational agency, or neuro-symbolic AI integration.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/context-engineering-fundamentals/bdi-mental-states"
-    },
-    {
-      "name": "brainstorming",
-      "source": "plugin:superpowers",
-      "description": "\"You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation.\"",
-      "categories": [
-        "coding",
-        "creative"
-      ],
-      "path": "/skills-catalog/plugins/superpowers/brainstorming"
+      "path": "/skills-catalog/local/careful"
     },
     {
       "name": "build123d",
@@ -200,186 +118,6 @@
         "general"
       ],
       "path": "/skills-catalog/local/static-analysis/skills/codeql"
-    },
-    {
-      "name": "context-compression",
-      "source": "plugin:agent-architecture",
-      "description": "This skill should be used when the user asks to \"compress context\", \"summarize conversation history\", \"implement compaction\", \"reduce token usage\", or mentions context compression, structured summarization, tokens-per-task optimization, or long-running agent sessions exceeding context limits.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-architecture/context-compression"
-    },
-    {
-      "name": "context-compression",
-      "source": "plugin:agent-development",
-      "description": "This skill should be used when the user asks to \"compress context\", \"summarize conversation history\", \"implement compaction\", \"reduce token usage\", or mentions context compression, structured summarization, tokens-per-task optimization, or long-running agent sessions exceeding context limits.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-development/context-compression"
-    },
-    {
-      "name": "context-compression",
-      "source": "plugin:agent-evaluation",
-      "description": "This skill should be used when the user asks to \"compress context\", \"summarize conversation history\", \"implement compaction\", \"reduce token usage\", or mentions context compression, structured summarization, tokens-per-task optimization, or long-running agent sessions exceeding context limits.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-evaluation/context-compression"
-    },
-    {
-      "name": "context-compression",
-      "source": "plugin:cognitive-architecture",
-      "description": "This skill should be used when the user asks to \"compress context\", \"summarize conversation history\", \"implement compaction\", \"reduce token usage\", or mentions context compression, structured summarization, tokens-per-task optimization, or long-running agent sessions exceeding context limits.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/cognitive-architecture/context-compression"
-    },
-    {
-      "name": "context-compression",
-      "source": "plugin:context-engineering-fundamentals",
-      "description": "This skill should be used when the user asks to \"compress context\", \"summarize conversation history\", \"implement compaction\", \"reduce token usage\", or mentions context compression, structured summarization, tokens-per-task optimization, or long-running agent sessions exceeding context limits.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/context-engineering-fundamentals/context-compression"
-    },
-    {
-      "name": "context-degradation",
-      "source": "plugin:agent-architecture",
-      "description": "This skill should be used when the user asks to \"diagnose context problems\", \"fix lost-in-middle issues\", \"debug agent failures\", \"understand context poisoning\", or mentions context degradation, attention patterns, context clash, context confusion, or agent performance degradation. Provides patterns for recognizing and mitigating context failures.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-architecture/context-degradation"
-    },
-    {
-      "name": "context-degradation",
-      "source": "plugin:agent-development",
-      "description": "This skill should be used when the user asks to \"diagnose context problems\", \"fix lost-in-middle issues\", \"debug agent failures\", \"understand context poisoning\", or mentions context degradation, attention patterns, context clash, context confusion, or agent performance degradation. Provides patterns for recognizing and mitigating context failures.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-development/context-degradation"
-    },
-    {
-      "name": "context-degradation",
-      "source": "plugin:agent-evaluation",
-      "description": "This skill should be used when the user asks to \"diagnose context problems\", \"fix lost-in-middle issues\", \"debug agent failures\", \"understand context poisoning\", or mentions context degradation, attention patterns, context clash, context confusion, or agent performance degradation. Provides patterns for recognizing and mitigating context failures.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-evaluation/context-degradation"
-    },
-    {
-      "name": "context-degradation",
-      "source": "plugin:cognitive-architecture",
-      "description": "This skill should be used when the user asks to \"diagnose context problems\", \"fix lost-in-middle issues\", \"debug agent failures\", \"understand context poisoning\", or mentions context degradation, attention patterns, context clash, context confusion, or agent performance degradation. Provides patterns for recognizing and mitigating context failures.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/cognitive-architecture/context-degradation"
-    },
-    {
-      "name": "context-degradation",
-      "source": "plugin:context-engineering-fundamentals",
-      "description": "This skill should be used when the user asks to \"diagnose context problems\", \"fix lost-in-middle issues\", \"debug agent failures\", \"understand context poisoning\", or mentions context degradation, attention patterns, context clash, context confusion, or agent performance degradation. Provides patterns for recognizing and mitigating context failures.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/context-engineering-fundamentals/context-degradation"
-    },
-    {
-      "name": "context-fundamentals",
-      "source": "plugin:agent-architecture",
-      "description": "This skill should be used when the user asks to \"understand context\", \"explain context windows\", \"design agent architecture\", \"debug context issues\", \"optimize context usage\", or discusses context components, attention mechanics, progressive disclosure, or context budgeting. Provides foundational understanding of context engineering for AI agent systems.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-architecture/context-fundamentals"
-    },
-    {
-      "name": "context-fundamentals",
-      "source": "plugin:agent-development",
-      "description": "This skill should be used when the user asks to \"understand context\", \"explain context windows\", \"design agent architecture\", \"debug context issues\", \"optimize context usage\", or discusses context components, attention mechanics, progressive disclosure, or context budgeting. Provides foundational understanding of context engineering for AI agent systems.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-development/context-fundamentals"
-    },
-    {
-      "name": "context-fundamentals",
-      "source": "plugin:agent-evaluation",
-      "description": "This skill should be used when the user asks to \"understand context\", \"explain context windows\", \"design agent architecture\", \"debug context issues\", \"optimize context usage\", or discusses context components, attention mechanics, progressive disclosure, or context budgeting. Provides foundational understanding of context engineering for AI agent systems.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-evaluation/context-fundamentals"
-    },
-    {
-      "name": "context-fundamentals",
-      "source": "plugin:cognitive-architecture",
-      "description": "This skill should be used when the user asks to \"understand context\", \"explain context windows\", \"design agent architecture\", \"debug context issues\", \"optimize context usage\", or discusses context components, attention mechanics, progressive disclosure, or context budgeting. Provides foundational understanding of context engineering for AI agent systems.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/cognitive-architecture/context-fundamentals"
-    },
-    {
-      "name": "context-fundamentals",
-      "source": "plugin:context-engineering-fundamentals",
-      "description": "This skill should be used when the user asks to \"understand context\", \"explain context windows\", \"design agent architecture\", \"debug context issues\", \"optimize context usage\", or discusses context components, attention mechanics, progressive disclosure, or context budgeting. Provides foundational understanding of context engineering for AI agent systems.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/context-engineering-fundamentals/context-fundamentals"
-    },
-    {
-      "name": "context-optimization",
-      "source": "plugin:agent-architecture",
-      "description": "This skill should be used when the user asks to \"optimize context\", \"reduce token costs\", \"improve context efficiency\", \"implement KV-cache optimization\", \"partition context\", or mentions context limits, observation masking, context budgeting, or extending effective context capacity.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-architecture/context-optimization"
-    },
-    {
-      "name": "context-optimization",
-      "source": "plugin:agent-development",
-      "description": "This skill should be used when the user asks to \"optimize context\", \"reduce token costs\", \"improve context efficiency\", \"implement KV-cache optimization\", \"partition context\", or mentions context limits, observation masking, context budgeting, or extending effective context capacity.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-development/context-optimization"
-    },
-    {
-      "name": "context-optimization",
-      "source": "plugin:agent-evaluation",
-      "description": "This skill should be used when the user asks to \"optimize context\", \"reduce token costs\", \"improve context efficiency\", \"implement KV-cache optimization\", \"partition context\", or mentions context limits, observation masking, context budgeting, or extending effective context capacity.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-evaluation/context-optimization"
-    },
-    {
-      "name": "context-optimization",
-      "source": "plugin:cognitive-architecture",
-      "description": "This skill should be used when the user asks to \"optimize context\", \"reduce token costs\", \"improve context efficiency\", \"implement KV-cache optimization\", \"partition context\", or mentions context limits, observation masking, context budgeting, or extending effective context capacity.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/cognitive-architecture/context-optimization"
-    },
-    {
-      "name": "context-optimization",
-      "source": "plugin:context-engineering-fundamentals",
-      "description": "This skill should be used when the user asks to \"optimize context\", \"reduce token costs\", \"improve context efficiency\", \"implement KV-cache optimization\", \"partition context\", or mentions context limits, observation masking, context budgeting, or extending effective context capacity.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/context-engineering-fundamentals/context-optimization"
     },
     {
       "name": "convergence-study",
@@ -427,6 +165,15 @@
       "path": "/skills-catalog/local/design-shotgun"
     },
     {
+      "name": "diagnose",
+      "source": "local",
+      "description": "\"[sonnet] Investigate bugs through a 3-phase evidence pipeline: investigate, verify, solve\"",
+      "categories": [
+        "coding"
+      ],
+      "path": "/skills-catalog/local/homerun/diagnose"
+    },
+    {
       "name": "differential-review",
       "source": "local",
       "description": ">",
@@ -445,14 +192,13 @@
       "path": "/skills-catalog/local/materials-simulation-skills/skills/core-numerical/differentiation-schemes"
     },
     {
-      "name": "dispatching-parallel-agents",
-      "source": "plugin:superpowers",
-      "description": "Use when facing 2+ independent tasks that can be worked on without shared state or sequential dependencies",
+      "name": "discovery",
+      "source": "local",
+      "description": "",
       "categories": [
-        "coding",
-        "general"
+        "coding"
       ],
-      "path": "/skills-catalog/plugins/superpowers/dispatching-parallel-agents"
+      "path": "/skills-catalog/local/homerun/discovery"
     },
     {
       "name": "docx",
@@ -465,112 +211,13 @@
       "path": "/skills-catalog/local/docx"
     },
     {
-      "name": "evaluation",
-      "source": "plugin:agent-architecture",
-      "description": "This skill should be used when the user asks to \"evaluate agent performance\", \"build test framework\", \"measure agent quality\", \"create evaluation rubrics\", or mentions LLM-as-judge, multi-dimensional evaluation, agent testing, or quality gates for agent pipelines.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-architecture/evaluation"
-    },
-    {
-      "name": "evaluation",
-      "source": "plugin:agent-development",
-      "description": "This skill should be used when the user asks to \"evaluate agent performance\", \"build test framework\", \"measure agent quality\", \"create evaluation rubrics\", or mentions LLM-as-judge, multi-dimensional evaluation, agent testing, or quality gates for agent pipelines.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-development/evaluation"
-    },
-    {
-      "name": "evaluation",
-      "source": "plugin:agent-evaluation",
-      "description": "This skill should be used when the user asks to \"evaluate agent performance\", \"build test framework\", \"measure agent quality\", \"create evaluation rubrics\", or mentions LLM-as-judge, multi-dimensional evaluation, agent testing, or quality gates for agent pipelines.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-evaluation/evaluation"
-    },
-    {
-      "name": "evaluation",
-      "source": "plugin:cognitive-architecture",
-      "description": "This skill should be used when the user asks to \"evaluate agent performance\", \"build test framework\", \"measure agent quality\", \"create evaluation rubrics\", or mentions LLM-as-judge, multi-dimensional evaluation, agent testing, or quality gates for agent pipelines.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/cognitive-architecture/evaluation"
-    },
-    {
-      "name": "evaluation",
-      "source": "plugin:context-engineering-fundamentals",
-      "description": "This skill should be used when the user asks to \"evaluate agent performance\", \"build test framework\", \"measure agent quality\", \"create evaluation rubrics\", or mentions LLM-as-judge, multi-dimensional evaluation, agent testing, or quality gates for agent pipelines.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/context-engineering-fundamentals/evaluation"
-    },
-    {
-      "name": "executing-plans",
-      "source": "plugin:superpowers",
-      "description": "Use when you have a written implementation plan to execute in a separate session with review checkpoints",
-      "categories": [
-        "coding"
-      ],
-      "path": "/skills-catalog/plugins/superpowers/executing-plans"
-    },
-    {
-      "name": "filesystem-context",
-      "source": "plugin:agent-architecture",
-      "description": "This skill should be used when the user asks to \"offload context to files\", \"implement dynamic context discovery\", \"use filesystem for agent memory\", \"reduce context window bloat\", or mentions file-based context management, tool output persistence, agent scratch pads, or just-in-time context loading.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-architecture/filesystem-context"
-    },
-    {
-      "name": "filesystem-context",
-      "source": "plugin:agent-development",
-      "description": "This skill should be used when the user asks to \"offload context to files\", \"implement dynamic context discovery\", \"use filesystem for agent memory\", \"reduce context window bloat\", or mentions file-based context management, tool output persistence, agent scratch pads, or just-in-time context loading.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-development/filesystem-context"
-    },
-    {
-      "name": "filesystem-context",
-      "source": "plugin:agent-evaluation",
-      "description": "This skill should be used when the user asks to \"offload context to files\", \"implement dynamic context discovery\", \"use filesystem for agent memory\", \"reduce context window bloat\", or mentions file-based context management, tool output persistence, agent scratch pads, or just-in-time context loading.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-evaluation/filesystem-context"
-    },
-    {
-      "name": "filesystem-context",
-      "source": "plugin:cognitive-architecture",
-      "description": "This skill should be used when the user asks to \"offload context to files\", \"implement dynamic context discovery\", \"use filesystem for agent memory\", \"reduce context window bloat\", or mentions file-based context management, tool output persistence, agent scratch pads, or just-in-time context loading.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/cognitive-architecture/filesystem-context"
-    },
-    {
-      "name": "filesystem-context",
-      "source": "plugin:context-engineering-fundamentals",
-      "description": "This skill should be used when the user asks to \"offload context to files\", \"implement dynamic context discovery\", \"use filesystem for agent memory\", \"reduce context window bloat\", or mentions file-based context management, tool output persistence, agent scratch pads, or just-in-time context loading.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/context-engineering-fundamentals/filesystem-context"
-    },
-    {
       "name": "finishing-a-development-branch",
-      "source": "plugin:superpowers",
-      "description": "Use when implementation is complete, all tests pass, and you need to decide how to integrate the work - guides completion of development work by presenting structured options for merge, PR, or cleanup",
+      "source": "local",
+      "description": "",
       "categories": [
         "coding"
       ],
-      "path": "/skills-catalog/plugins/superpowers/finishing-a-development-branch"
+      "path": "/skills-catalog/local/homerun/finishing-a-development-branch"
     },
     {
       "name": "firecrawl-agent",
@@ -599,6 +246,15 @@
         "general"
       ],
       "path": "/skills-catalog/local/generate-image"
+    },
+    {
+      "name": "generate-test-skeletons",
+      "source": "local",
+      "description": "\"[sonnet] Generate ROI-prioritized test skeletons from specs before implementation\"",
+      "categories": [
+        "coding"
+      ],
+      "path": "/skills-catalog/local/homerun/generate-test-skeletons"
     },
     {
       "name": "gh-fix-ci",
@@ -639,49 +295,13 @@
       "path": "/skills-catalog/local/github-ops"
     },
     {
-      "name": "hosted-agents",
-      "source": "plugin:agent-architecture",
-      "description": "This skill should be used when the user asks to \"build background agent\", \"create hosted coding agent\", \"set up sandboxed execution\", \"implement multiplayer agent\", or mentions background agents, sandboxed VMs, agent infrastructure, Modal sandboxes, self-spawning agents, or remote coding environments.",
+      "name": "implement",
+      "source": "local",
+      "description": "",
       "categories": [
-        "general"
+        "coding"
       ],
-      "path": "/skills-catalog/plugins/agent-architecture/hosted-agents"
-    },
-    {
-      "name": "hosted-agents",
-      "source": "plugin:agent-development",
-      "description": "This skill should be used when the user asks to \"build background agent\", \"create hosted coding agent\", \"set up sandboxed execution\", \"implement multiplayer agent\", or mentions background agents, sandboxed VMs, agent infrastructure, Modal sandboxes, self-spawning agents, or remote coding environments.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-development/hosted-agents"
-    },
-    {
-      "name": "hosted-agents",
-      "source": "plugin:agent-evaluation",
-      "description": "This skill should be used when the user asks to \"build background agent\", \"create hosted coding agent\", \"set up sandboxed execution\", \"implement multiplayer agent\", or mentions background agents, sandboxed VMs, agent infrastructure, Modal sandboxes, self-spawning agents, or remote coding environments.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-evaluation/hosted-agents"
-    },
-    {
-      "name": "hosted-agents",
-      "source": "plugin:cognitive-architecture",
-      "description": "This skill should be used when the user asks to \"build background agent\", \"create hosted coding agent\", \"set up sandboxed execution\", \"implement multiplayer agent\", or mentions background agents, sandboxed VMs, agent infrastructure, Modal sandboxes, self-spawning agents, or remote coding environments.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/cognitive-architecture/hosted-agents"
-    },
-    {
-      "name": "hosted-agents",
-      "source": "plugin:context-engineering-fundamentals",
-      "description": "This skill should be used when the user asks to \"build background agent\", \"create hosted coding agent\", \"set up sandboxed execution\", \"implement multiplayer agent\", or mentions background agents, sandboxed VMs, agent infrastructure, Modal sandboxes, self-spawning agents, or remote coding environments.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/context-engineering-fundamentals/hosted-agents"
+      "path": "/skills-catalog/local/homerun/implement"
     },
     {
       "name": "internal-comms",
@@ -721,51 +341,6 @@
       "path": "/skills-catalog/local/market-data"
     },
     {
-      "name": "memory-systems",
-      "source": "plugin:agent-architecture",
-      "description": ">",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-architecture/memory-systems"
-    },
-    {
-      "name": "memory-systems",
-      "source": "plugin:agent-development",
-      "description": ">",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-development/memory-systems"
-    },
-    {
-      "name": "memory-systems",
-      "source": "plugin:agent-evaluation",
-      "description": ">",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-evaluation/memory-systems"
-    },
-    {
-      "name": "memory-systems",
-      "source": "plugin:cognitive-architecture",
-      "description": ">",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/cognitive-architecture/memory-systems"
-    },
-    {
-      "name": "memory-systems",
-      "source": "plugin:context-engineering-fundamentals",
-      "description": ">",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/context-engineering-fundamentals/memory-systems"
-    },
-    {
       "name": "mesh-generation",
       "source": "local",
       "description": "Plan and evaluate mesh generation for numerical simulations. Use when choosing grid resolution, checking aspect ratios/skewness, estimating mesh quality constraints, or planning adaptive mesh refinement for PDE discretization.",
@@ -773,51 +348,6 @@
         "general"
       ],
       "path": "/skills-catalog/local/materials-simulation-skills/skills/core-numerical/mesh-generation"
-    },
-    {
-      "name": "multi-agent-patterns",
-      "source": "plugin:agent-architecture",
-      "description": "This skill should be used when the user asks to \"design multi-agent system\", \"implement supervisor pattern\", \"create swarm architecture\", \"coordinate multiple agents\", or mentions multi-agent patterns, context isolation, agent handoffs, sub-agents, or parallel agent execution.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-architecture/multi-agent-patterns"
-    },
-    {
-      "name": "multi-agent-patterns",
-      "source": "plugin:agent-development",
-      "description": "This skill should be used when the user asks to \"design multi-agent system\", \"implement supervisor pattern\", \"create swarm architecture\", \"coordinate multiple agents\", or mentions multi-agent patterns, context isolation, agent handoffs, sub-agents, or parallel agent execution.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-development/multi-agent-patterns"
-    },
-    {
-      "name": "multi-agent-patterns",
-      "source": "plugin:agent-evaluation",
-      "description": "This skill should be used when the user asks to \"design multi-agent system\", \"implement supervisor pattern\", \"create swarm architecture\", \"coordinate multiple agents\", or mentions multi-agent patterns, context isolation, agent handoffs, sub-agents, or parallel agent execution.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-evaluation/multi-agent-patterns"
-    },
-    {
-      "name": "multi-agent-patterns",
-      "source": "plugin:cognitive-architecture",
-      "description": "This skill should be used when the user asks to \"design multi-agent system\", \"implement supervisor pattern\", \"create swarm architecture\", \"coordinate multiple agents\", or mentions multi-agent patterns, context isolation, agent handoffs, sub-agents, or parallel agent execution.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/cognitive-architecture/multi-agent-patterns"
-    },
-    {
-      "name": "multi-agent-patterns",
-      "source": "plugin:context-engineering-fundamentals",
-      "description": "This skill should be used when the user asks to \"design multi-agent system\", \"implement supervisor pattern\", \"create swarm architecture\", \"coordinate multiple agents\", or mentions multi-agent patterns, context isolation, agent handoffs, sub-agents, or parallel agent execution.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/context-engineering-fundamentals/multi-agent-patterns"
     },
     {
       "name": "neon-postgres",
@@ -994,13 +524,13 @@
       "path": "/skills-catalog/local/pr-review"
     },
     {
-      "name": "project-development",
-      "source": "plugin:agent-architecture",
-      "description": "This skill should be used when the user asks to \"start an LLM project\", \"design batch pipeline\", \"evaluate task-model fit\", \"structure agent project\", or mentions pipeline architecture, agent-assisted development, cost estimation, or choosing between LLM and traditional approaches.",
+      "name": "pymeshlab",
+      "source": "local",
+      "description": "Professional mesh cleanup and repair using PyMeshLab. Trigger on 'repair mesh', 'fix normals', 'decimate mesh', 'reduce polygons', 'smooth mesh', 'optimize for printing', 'fix manifold', 'fill holes', 'clean STL', or when the user has a mesh file that needs processing before printing or import.",
       "categories": [
         "general"
       ],
-      "path": "/skills-catalog/plugins/agent-architecture/project-development"
+      "path": "/skills-catalog/local/pymeshlab"
     },
     {
       "name": "project-development",
@@ -1048,13 +578,13 @@
       "path": "/skills-catalog/local/pymeshlab"
     },
     {
-      "name": "receiving-code-review",
-      "source": "plugin:superpowers",
-      "description": "Use when receiving code review feedback, before implementing suggestions, especially if feedback seems unclear or technically questionable - requires technical rigor and verification, not performative agreement or blind implementation",
+      "name": "quality-check",
+      "source": "local",
+      "description": "\"[sonnet/haiku-tier] Multi-phase quality pipeline: lint, types, structure, tests, recheck. Haiku-tier tasks skip LLM phases.\"",
       "categories": [
         "coding"
       ],
-      "path": "/skills-catalog/plugins/superpowers/receiving-code-review"
+      "path": "/skills-catalog/local/homerun/quality-check"
     },
     {
       "name": "remotion",
@@ -1067,13 +597,40 @@
       "path": "/skills-catalog/local/remotion"
     },
     {
-      "name": "requesting-code-review",
-      "source": "plugin:superpowers",
-      "description": "Use when completing tasks, implementing major features, or before merging to verify work meets requirements",
+      "name": "retro",
+      "source": "local",
+      "description": "Run a weekly engineering retrospective. Analyzes git commit history to produce a structured report covering what shipped, hotspots, quality signals, and next-week priorities. Use when asked to \"weekly retro\", \"what did we ship\", \"engineering retrospective\", \"sprint review\", \"team retrospective\", \"what shipped this week\".",
+      "categories": [
+        "general"
+      ],
+      "path": "/skills-catalog/local/retro"
+    },
+    {
+      "name": "reverse-engineer",
+      "source": "local",
+      "description": "\"[opus] Generate PRD, ADR, and TECHNICAL_DESIGN from an existing codebase\"",
       "categories": [
         "coding"
       ],
-      "path": "/skills-catalog/plugins/superpowers/requesting-code-review"
+      "path": "/skills-catalog/local/homerun/reverse-engineer"
+    },
+    {
+      "name": "review",
+      "source": "local",
+      "description": "",
+      "categories": [
+        "coding"
+      ],
+      "path": "/skills-catalog/local/homerun/review"
+    },
+    {
+      "name": "review-specialists",
+      "source": "local",
+      "description": "Specialist code review lenses for deep analysis beyond standard PR review. Each specialist is a focused pass with its own checklist. Use when asked to \"specialist review\", \"deep review\", \"security review of this code\", \"performance review\", \"API review\", \"migration review\", or \"red team this code\".",
+      "categories": [
+        "general"
+      ],
+      "path": "/skills-catalog/local/review-specialists"
     },
     {
       "name": "retro",
@@ -1103,6 +660,15 @@
       "path": "/skills-catalog/local/static-analysis/skills/sarif-parsing"
     },
     {
+      "name": "scope-analysis",
+      "source": "local",
+      "description": "",
+      "categories": [
+        "coding"
+      ],
+      "path": "/skills-catalog/local/homerun/scope-analysis"
+    },
+    {
       "name": "semgrep",
       "source": "local",
       "description": ">-",
@@ -1120,6 +686,15 @@
         "general"
       ],
       "path": "/skills-catalog/local/sentry"
+    },
+    {
+      "name": "setup-quality-gates",
+      "source": "local",
+      "description": "\"[haiku] Set up Claude Code hooks for automatic lint, typecheck, and auto-format enforcement\"",
+      "categories": [
+        "coding"
+      ],
+      "path": "/skills-catalog/local/homerun/setup-quality-gates"
     },
     {
       "name": "simulation-orchestrator",
@@ -1158,6 +733,15 @@
       "path": "/skills-catalog/local/materials-simulation-skills/skills/hpc-deployment/slurm-job-script-generator"
     },
     {
+      "name": "spec-review",
+      "source": "local",
+      "description": "\"[sonnet] Review specification documents for consistency, completeness, and testability before planning\"",
+      "categories": [
+        "coding"
+      ],
+      "path": "/skills-catalog/local/homerun/spec-review"
+    },
+    {
       "name": "sprint-plan",
       "source": "local",
       "description": "\"Plan a sprint with capacity estimation, story selection, dependency mapping, and risk identification. Use when preparing for sprint planning, estimating team capacity, selecting stories, or balancing sprint scope against velocity.\"",
@@ -1176,15 +760,6 @@
       "path": "/skills-catalog/local/static-analysis"
     },
     {
-      "name": "subagent-driven-development",
-      "source": "plugin:superpowers",
-      "description": "Use when executing implementation plans with independent tasks in the current session",
-      "categories": [
-        "coding"
-      ],
-      "path": "/skills-catalog/plugins/superpowers/subagent-driven-development"
-    },
-    {
       "name": "summarize-meeting",
       "source": "local",
       "description": "\"Summarize a meeting transcript into structured notes with date, participants, topic, key decisions, summary points, and action items. Use when processing meeting recordings, creating meeting notes, writing meeting minutes, or recapping discussions.\"",
@@ -1195,12 +770,30 @@
     },
     {
       "name": "systematic-debugging",
-      "source": "plugin:superpowers",
-      "description": "Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes",
+      "source": "local",
+      "description": "",
       "categories": [
         "coding"
       ],
-      "path": "/skills-catalog/plugins/superpowers/systematic-debugging"
+      "path": "/skills-catalog/local/homerun/systematic-debugging"
+    },
+    {
+      "name": "task-decomposition",
+      "source": "local",
+      "description": "",
+      "categories": [
+        "coding"
+      ],
+      "path": "/skills-catalog/local/homerun/task-decomposition"
+    },
+    {
+      "name": "team-lead",
+      "source": "local",
+      "description": "\"Guide implementation orchestration — dispatch implementers, track progress, run quality gate\"",
+      "categories": [
+        "coding"
+      ],
+      "path": "/skills-catalog/local/homerun/team-lead"
     },
     {
       "name": "technical-analysis",
@@ -1213,12 +806,12 @@
     },
     {
       "name": "test-driven-development",
-      "source": "plugin:superpowers",
-      "description": "Use when implementing any feature or bugfix, before writing implementation code",
+      "source": "local",
+      "description": "",
       "categories": [
         "coding"
       ],
-      "path": "/skills-catalog/plugins/superpowers/test-driven-development"
+      "path": "/skills-catalog/local/homerun/test-driven-development"
     },
     {
       "name": "tilesheet-sprites",
@@ -1239,77 +832,13 @@
       "path": "/skills-catalog/local/materials-simulation-skills/skills/core-numerical/time-stepping"
     },
     {
-      "name": "tool-design",
-      "source": "plugin:agent-architecture",
-      "description": "This skill should be used when the user asks to \"design agent tools\", \"create tool descriptions\", \"reduce tool complexity\", \"implement MCP tools\", or mentions tool consolidation, architectural reduction, tool naming conventions, or agent-tool interfaces.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-architecture/tool-design"
-    },
-    {
-      "name": "tool-design",
-      "source": "plugin:agent-development",
-      "description": "This skill should be used when the user asks to \"design agent tools\", \"create tool descriptions\", \"reduce tool complexity\", \"implement MCP tools\", or mentions tool consolidation, architectural reduction, tool naming conventions, or agent-tool interfaces.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-development/tool-design"
-    },
-    {
-      "name": "tool-design",
-      "source": "plugin:agent-evaluation",
-      "description": "This skill should be used when the user asks to \"design agent tools\", \"create tool descriptions\", \"reduce tool complexity\", \"implement MCP tools\", or mentions tool consolidation, architectural reduction, tool naming conventions, or agent-tool interfaces.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/agent-evaluation/tool-design"
-    },
-    {
-      "name": "tool-design",
-      "source": "plugin:cognitive-architecture",
-      "description": "This skill should be used when the user asks to \"design agent tools\", \"create tool descriptions\", \"reduce tool complexity\", \"implement MCP tools\", or mentions tool consolidation, architectural reduction, tool naming conventions, or agent-tool interfaces.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/cognitive-architecture/tool-design"
-    },
-    {
-      "name": "tool-design",
-      "source": "plugin:context-engineering-fundamentals",
-      "description": "This skill should be used when the user asks to \"design agent tools\", \"create tool descriptions\", \"reduce tool complexity\", \"implement MCP tools\", or mentions tool consolidation, architectural reduction, tool naming conventions, or agent-tool interfaces.",
-      "categories": [
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/context-engineering-fundamentals/tool-design"
-    },
-    {
       "name": "using-git-worktrees",
-      "source": "plugin:superpowers",
-      "description": "Use when starting feature work that needs isolation from current workspace or before executing implementation plans - creates isolated git worktrees with smart directory selection and safety verification",
+      "source": "local",
+      "description": "",
       "categories": [
         "coding"
       ],
-      "path": "/skills-catalog/plugins/superpowers/using-git-worktrees"
-    },
-    {
-      "name": "using-superpowers",
-      "source": "plugin:superpowers",
-      "description": "Use when starting any conversation - establishes how to find and use skills, requiring Skill tool invocation before ANY response including clarifying questions",
-      "categories": [
-        "coding",
-        "general"
-      ],
-      "path": "/skills-catalog/plugins/superpowers/using-superpowers"
-    },
-    {
-      "name": "verification-before-completion",
-      "source": "plugin:superpowers",
-      "description": "Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always",
-      "categories": [
-        "coding"
-      ],
-      "path": "/skills-catalog/plugins/superpowers/verification-before-completion"
+      "path": "/skills-catalog/local/homerun/using-git-worktrees"
     },
     {
       "name": "visual-explainer",
@@ -1319,6 +848,15 @@
         "general"
       ],
       "path": "/skills-catalog/local/visual-explainer"
+    },
+    {
+      "name": "walkthrough",
+      "source": "local",
+      "description": "\"[sonnet] Generate Playwright walkthrough scripts from user journeys for demo recordings\"",
+      "categories": [
+        "coding"
+      ],
+      "path": "/skills-catalog/local/homerun/walkthrough"
     },
     {
       "name": "webapp-testing",
@@ -1337,24 +875,6 @@
         "coding"
       ],
       "path": "/skills-catalog/local/wrangler"
-    },
-    {
-      "name": "writing-plans",
-      "source": "plugin:superpowers",
-      "description": "Use when you have a spec or requirements for a multi-step task, before touching code",
-      "categories": [
-        "coding"
-      ],
-      "path": "/skills-catalog/plugins/superpowers/writing-plans"
-    },
-    {
-      "name": "writing-skills",
-      "source": "plugin:superpowers",
-      "description": "Use when creating new skills, editing existing skills, or verifying skills work before deployment",
-      "categories": [
-        "coding"
-      ],
-      "path": "/skills-catalog/plugins/superpowers/writing-skills"
     },
     {
       "name": "xlsx",
