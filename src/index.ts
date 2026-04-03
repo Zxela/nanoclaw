@@ -7,12 +7,14 @@ import {
   DATA_DIR,
   GOAL_TIMEOUT_DEFAULT,
   GOAL_TIMEOUT_MAX,
+  HEALTH_CHECK_PORT,
   IDLE_TIMEOUT,
   POLL_INTERVAL,
   TIMEZONE,
   TRIGGER_PATTERN,
 } from './config.js';
 import { startCredentialProxy } from './credential-proxy.js';
+import { startHealthServer } from './health-server.js';
 import './channels/index.js';
 import {
   getChannelFactory,
@@ -809,11 +811,18 @@ async function main(): Promise<void> {
     PROXY_BIND_HOST,
   );
 
+  // Start health check server (operators poll GET /health)
+  const healthServer = await startHealthServer(
+    HEALTH_CHECK_PORT,
+    () => Object.keys(registeredGroups).length,
+  );
+
   // Graceful shutdown handlers
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'Shutdown signal received');
     stopIpcWatcher();
     proxyServer.close();
+    healthServer.close();
     await queue.shutdown(10000);
     for (const ch of channels) await ch.disconnect();
     process.exit(0);
