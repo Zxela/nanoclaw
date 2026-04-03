@@ -69,6 +69,10 @@ export const CREDENTIAL_PROXY_PORT = parseIntEnv(
   process.env.CREDENTIAL_PROXY_PORT,
   3001,
 );
+export const HEALTH_CHECK_PORT = parseIntEnv(
+  process.env.HEALTH_CHECK_PORT,
+  3002,
+);
 export const IPC_POLL_INTERVAL = 1000;
 export const DEBUG_QUERY_TIMEOUT_ACTIVE = 120_000; // 120s for active containers (accounts for rate limits)
 export const DEBUG_QUERY_TIMEOUT_FRESH = 300_000; // 5min for fresh containers (needs boot + possible rate limits)
