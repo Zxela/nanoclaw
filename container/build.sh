@@ -18,6 +18,13 @@ echo "=== Generating skills catalog ==="
 npx tsx generate-catalog.ts
 
 echo ""
+echo "=== Pruning BuildKit builder cache ==="
+# BuildKit retains stale file metadata in its builder volume — --no-cache alone
+# does not invalidate COPY steps. Pruning before every build ensures the container
+# always reflects the current state of the build context.
+${CONTAINER_RUNTIME} builder prune -f
+
+echo ""
 echo "=== Building container image ==="
 echo "Image: ${IMAGE_NAME}:${TAG}"
 
