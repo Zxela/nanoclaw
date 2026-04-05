@@ -448,6 +448,10 @@ export async function runContainerAgent(
   input: ContainerInput,
   onProcess: (proc: ChildProcess, containerName: string) => void,
   onOutput?: (output: ContainerOutput) => Promise<void>,
+  onTimeoutReady?: (ctl: {
+    reset: () => void;
+    extendTo: (ms: number) => void;
+  }) => void,
 ): Promise<ContainerOutput> {
   const startTime = Date.now();
 
@@ -616,7 +620,7 @@ export async function runContainerAgent(
       CONTAINER_TIMEOUT;
     // Grace period: hard timeout must be at least IDLE_TIMEOUT + 30s so the
     // graceful _close sentinel has time to trigger before the hard kill fires.
-    const timeoutMs = Math.max(configTimeout, IDLE_TIMEOUT + 30_000);
+    let timeoutMs = Math.max(configTimeout, IDLE_TIMEOUT + 30_000);
 
     const killOnTimeout = () => {
       timedOut = true;
@@ -637,11 +641,34 @@ export async function runContainerAgent(
 
     let timeout = setTimeout(killOnTimeout, timeoutMs);
 
-    // Reset the timeout whenever there's activity (streaming output)
+    // Reset the timeout whenever there's activity (streaming output or IPC)
     const resetTimeout = () => {
       clearTimeout(timeout);
       timeout = setTimeout(killOnTimeout, timeoutMs);
     };
+
+    // Expose timeout control so escalation / IPC activity can extend it
+    if (onTimeoutReady) {
+      onTimeoutReady({
+        reset: resetTimeout,
+        extendTo: (ms: number) => {
+          const newMs = Math.max(ms, IDLE_TIMEOUT + 30_000);
+          if (newMs > timeoutMs) {
+            logger.info(
+              {
+                group: group.name,
+                containerName,
+                oldMs: timeoutMs,
+                newMs,
+              },
+              'Container timeout extended',
+            );
+            timeoutMs = newMs;
+          }
+          resetTimeout();
+        },
+      });
+    }
 
     let settled = false;
     container.on('close', (code) => {

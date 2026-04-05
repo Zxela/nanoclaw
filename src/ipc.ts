@@ -74,6 +74,8 @@ export interface IpcDeps {
   onContainerPaused?: (groupFolder: string, threadId: string) => void;
   /** Optional: container confirmed it has resumed */
   onContainerResumed?: (groupFolder: string, threadId: string) => void;
+  /** Optional: container produced IPC activity — resets hard timeout */
+  onContainerActivity?: (groupFolder: string, threadId: string) => void;
 }
 
 type ExternalIpcHandler = (
@@ -292,6 +294,7 @@ async function handleIpcMessage(
       { chatJid: data.chatJid, sourceGroup, threadId },
       'IPC message sent',
     );
+    deps.onContainerActivity?.(sourceGroup, threadId || 'default');
   } else {
     logger.warn(
       { chatJid: data.chatJid, sourceGroup },
@@ -407,6 +410,7 @@ async function handleIpcFiles(
       },
       'IPC files sent',
     );
+    deps.onContainerActivity?.(sourceGroup, threadId || 'default');
   }
 }
 

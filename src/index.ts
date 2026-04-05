@@ -528,6 +528,8 @@ async function runAgent(opts: RunAgentOpts): Promise<'success' | 'error'> {
           threadId,
         ),
       wrappedOnOutput,
+      (ctl) =>
+        queue.registerTimeoutControl(chatJid, threadId || 'default', ctl),
     );
 
     if (output.newSessionId && !sessionOverride) {
@@ -1109,6 +1111,14 @@ async function main(): Promise<void> {
     },
     onContainerResumed: (_groupFolder, _threadId) => {
       // No-op on host side — container handles its own resume
+    },
+    onContainerActivity: (groupFolder, threadId) => {
+      for (const [jid, group] of Object.entries(registeredGroups)) {
+        if (group.folder === groupFolder) {
+          queue.notifyContainerActivity(jid, threadId);
+          break;
+        }
+      }
     },
   });
   queue.setProcessMessagesFn(async (groupJid: string, threadId?: string) => {

@@ -36,6 +36,7 @@ interface ThreadState {
   pendingPause: boolean;
   pausedAt: number | null;
   goalTimeoutMs: number | undefined;
+  timeoutCtl: { reset: () => void; extendTo: (ms: number) => void } | null;
 }
 
 interface GroupState {
@@ -113,6 +114,7 @@ export class GroupQueue {
         pendingPause: false,
         pausedAt: null,
         goalTimeoutMs: undefined,
+        timeoutCtl: null,
       };
       this.threads.set(key, state);
     }
@@ -341,6 +343,24 @@ export class GroupQueue {
     if (groupFolder) thread.groupFolder = groupFolder;
   }
 
+  registerTimeoutControl(
+    groupJid: string,
+    threadId: string,
+    ctl: { reset: () => void; extendTo: (ms: number) => void },
+  ): void {
+    const thread = this.getThread(groupJid, threadId);
+    thread.timeoutCtl = ctl;
+  }
+
+  /**
+   * Notify that a container produced IPC activity (send_message, send_files, etc.).
+   * Resets the hard timeout so active containers aren't killed mid-work.
+   */
+  notifyContainerActivity(groupJid: string, threadId: string): void {
+    const thread = this.threads.get(this.threadKey(groupJid, threadId));
+    thread?.timeoutCtl?.reset();
+  }
+
   /**
    * Mark the container for a specific thread as idle-waiting.
    * If tasks are pending for the group, preempt immediately.
@@ -534,6 +554,7 @@ export class GroupQueue {
       thread.pausedAt = null;
       thread.priority = 'interactive';
       thread.goalTimeoutMs = undefined;
+      thread.timeoutCtl = null;
 
       if (opts.taskId) group.runningTaskId = null;
 
@@ -789,6 +810,10 @@ export class GroupQueue {
     if (!thread.active) return;
 
     thread.priority = 'goal';
+    // Reset the hard timeout so the container isn't killed shortly after
+    // escalation.  We don't extend to the full goal duration — ongoing IPC
+    // activity (send_message, etc.) will keep resetting it as needed.
+    thread.timeoutCtl?.reset();
     logger.info({ groupJid, threadId }, 'goal.escalated');
   }
 
