@@ -58,6 +58,8 @@ export function buildToolDetail(
       return { taskId: data.task_id };
     case 'list_tasks':
       return { requestId: data.requestId };
+    case 'get_task':
+      return { taskId: data.taskId, requestId: data.requestId };
     case 'register_group':
       return { jid: data.jid, folder: data.folder };
     case 'debug_query':

@@ -341,6 +341,88 @@ server.tool(
 );
 
 server.tool(
+  'get_task',
+  'Get full details of a scheduled task by ID, including the complete prompt text. Use this when list_tasks truncates the prompt.',
+  { task_id: z.string().describe('The task ID to retrieve') },
+  async (args) => {
+    try {
+      const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      writeIpcFile(QUEUE_DIR, {
+        type: 'get_task',
+        taskId: args.task_id,
+        requestId,
+        groupFolder,
+        isMain: String(isMain),
+        timestamp: new Date().toISOString(),
+      });
+
+      const inputDir = path.join(IPC_DIR, 'input');
+      const responseFile = path.join(inputDir, `get_task-${requestId}.json`);
+      const timeout = 5000;
+      const pollInterval = 100;
+      const start = Date.now();
+
+      while (Date.now() - start < timeout) {
+        if (fs.existsSync(responseFile)) {
+          const task = JSON.parse(fs.readFileSync(responseFile, 'utf-8'));
+          try {
+            fs.unlinkSync(responseFile);
+          } catch {
+            /* ignore */
+          }
+
+          if (task.error) {
+            return {
+              content: [{ type: 'text' as const, text: task.error }],
+              isError: true,
+            };
+          }
+
+          const lines = [
+            `ID: ${task.id}`,
+            `Group: ${task.groupFolder}`,
+            `Schedule: ${task.schedule_type}: ${task.schedule_value}`,
+            `Context mode: ${task.context_mode || 'group'}`,
+            `Status: ${task.status}`,
+            `Next run: ${task.next_run || 'N/A'}`,
+            `Last run: ${task.last_run || 'N/A'}`,
+            `Run count: ${task.run_count}`,
+            `Last result: ${task.last_result || 'N/A'}`,
+            ``,
+            `Prompt:`,
+            task.prompt,
+          ];
+
+          return {
+            content: [{ type: 'text' as const, text: lines.join('\n') }],
+          };
+        }
+        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+      }
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: 'Timed out waiting for task details from host. Try again.',
+          },
+        ],
+        isError: true,
+      };
+    } catch (err) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Error getting task: ${err instanceof Error ? err.message : String(err)}`,
+          },
+        ],
+      };
+    }
+  },
+);
+
+server.tool(
   'pause_task',
   'Pause a scheduled task. It will not run until resumed.',
   { task_id: z.string().describe('The task ID to pause') },

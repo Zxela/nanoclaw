@@ -455,6 +455,46 @@ async function processQueueFile(
           registeredGroups,
         );
         break;
+      case 'get_task': {
+        const requestId = ((data.requestId as string) || '').replace(
+          /[^a-zA-Z0-9_-]/g,
+          '',
+        );
+        if (!requestId) break;
+
+        const taskId = data.taskId as string;
+        const task = taskId ? getTaskById(taskId) : undefined;
+
+        let response: object;
+        if (!task) {
+          response = { error: 'Task not found' };
+        } else if (!isMain && task.group_folder !== sourceGroup) {
+          response = { error: 'Task not found' };
+        } else {
+          const runCounts = getRunCountsForTasks([task.id]);
+          response = {
+            id: task.id,
+            groupFolder: task.group_folder,
+            prompt: task.prompt,
+            schedule_type: task.schedule_type,
+            schedule_value: task.schedule_value,
+            context_mode: task.context_mode,
+            status: task.status,
+            next_run: task.next_run,
+            last_run: task.last_run,
+            last_result: task.last_result,
+            run_count: runCounts[task.id] ?? 0,
+          };
+        }
+
+        const inputDir = path.join(basePath, 'input');
+        fs.mkdirSync(inputDir, { recursive: true });
+        const responseFile = path.join(inputDir, `get_task-${requestId}.json`);
+        const tempFile = `${responseFile}.tmp`;
+        fs.writeFileSync(tempFile, JSON.stringify(response));
+        fs.renameSync(tempFile, responseFile);
+        break;
+      }
       case 'list_tasks': {
         // Sanitize requestId to prevent path traversal (defense-in-depth)
         const requestId = ((data.requestId as string) || '').replace(

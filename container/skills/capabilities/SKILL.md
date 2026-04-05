@@ -48,6 +48,7 @@ The NanoClaw MCP server exposes these tools (via `mcp__nanoclaw__*` prefix):
 - `send_files` — send files as chat attachments to the user/group
 - `schedule_task` — schedule a recurring or one-time task
 - `list_tasks` — list scheduled tasks
+- `get_task` — get full details of a task by ID (including complete prompt)
 - `pause_task` — pause a scheduled task
 - `resume_task` — resume a paused task
 - `cancel_task` — cancel and delete a task
