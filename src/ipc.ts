@@ -476,6 +476,7 @@ async function processQueueFile(
           prompt: t.prompt,
           schedule_type: t.schedule_type,
           schedule_value: t.schedule_value,
+          context_mode: t.context_mode,
           status: t.status,
           next_run: t.next_run,
           last_run: t.last_run,
@@ -508,6 +509,7 @@ async function processQueueFile(
           isMain,
           deps,
           ipcBaseDir,
+          basePath,
         );
         break;
       case 'vault_prune': {
@@ -715,8 +717,12 @@ export async function processTaskIpc(
   isMain: boolean, // Verified from directory path
   deps: IpcDeps,
   ipcBaseDir?: string,
+  responseBasePath?: string,
 ): Promise<void> {
   const resolvedIpcBaseDir = ipcBaseDir || path.join(DATA_DIR, 'ipc');
+  // Write responses to the caller's IPC dir (thread or main)
+  const resolvedResponseBase =
+    responseBasePath || path.join(resolvedIpcBaseDir, sourceGroup);
   const registeredGroups = deps.registeredGroups();
 
   switch (data.type) {
@@ -731,11 +737,31 @@ export async function processTaskIpc(
         const targetJid = data.targetJid as string;
         const targetGroupEntry = registeredGroups[targetJid];
 
+        // Helper to write error response for schedule_task
+        const writeScheduleError = (errorMsg: string) => {
+          const reqId = ((data.requestId as string) || '').replace(
+            /[^a-zA-Z0-9_-]/g,
+            '',
+          );
+          if (reqId) {
+            const inputDir = path.join(resolvedResponseBase, 'input');
+            fs.mkdirSync(inputDir, { recursive: true });
+            const responseFile = path.join(
+              inputDir,
+              `schedule_task-${reqId}.json`,
+            );
+            const tempFile = `${responseFile}.tmp`;
+            fs.writeFileSync(tempFile, JSON.stringify({ error: errorMsg }));
+            fs.renameSync(tempFile, responseFile);
+          }
+        };
+
         if (!targetGroupEntry) {
           logger.warn(
             { targetJid },
             'Cannot schedule task: target group not registered',
           );
+          writeScheduleError(`Target group not registered: ${targetJid}`);
           break;
         }
 
@@ -746,6 +772,9 @@ export async function processTaskIpc(
           logger.warn(
             { sourceGroup, targetFolder },
             'Unauthorized schedule_task attempt blocked',
+          );
+          writeScheduleError(
+            'Unauthorized: cannot schedule tasks for other groups.',
           );
           break;
         }
@@ -764,6 +793,9 @@ export async function processTaskIpc(
               { scheduleValue: data.schedule_value },
               'Invalid cron expression',
             );
+            writeScheduleError(
+              `Invalid cron expression: ${data.schedule_value}`,
+            );
             break;
           }
         } else if (scheduleType === 'interval') {
@@ -772,6 +804,9 @@ export async function processTaskIpc(
             logger.warn(
               { scheduleValue: data.schedule_value },
               'Invalid interval',
+            );
+            writeScheduleError(
+              `Invalid interval value: ${data.schedule_value}. Must be a positive number of milliseconds.`,
             );
             break;
           }
@@ -782,6 +817,9 @@ export async function processTaskIpc(
             logger.warn(
               { scheduleValue: data.schedule_value },
               'Invalid timestamp',
+            );
+            writeScheduleError(
+              `Invalid timestamp: ${data.schedule_value}. Must be an ISO 8601 date string.`,
             );
             break;
           }
@@ -800,28 +838,9 @@ export async function processTaskIpc(
             },
             'Task count cap reached, rejecting schedule_task',
           );
-          // Write error response so the agent knows the request was rejected
-          const reqId = ((data.requestId as string) || '').replace(
-            /[^a-zA-Z0-9_-]/g,
-            '',
+          writeScheduleError(
+            `Task count cap reached (${activeCount}/${MAX_SCHEDULED_TASKS_PER_GROUP}). Pause or cancel existing tasks first.`,
           );
-          if (reqId) {
-            const groupIpcDir = path.join(resolvedIpcBaseDir, sourceGroup);
-            const inputDir = path.join(groupIpcDir, 'input');
-            fs.mkdirSync(inputDir, { recursive: true });
-            const responseFile = path.join(
-              inputDir,
-              `schedule_task-${reqId}.json`,
-            );
-            const tempFile = `${responseFile}.tmp`;
-            fs.writeFileSync(
-              tempFile,
-              JSON.stringify({
-                error: `Task count cap reached (${activeCount}/${MAX_SCHEDULED_TASKS_PER_GROUP}). Pause or cancel existing tasks first.`,
-              }),
-            );
-            fs.renameSync(tempFile, responseFile);
-          }
           break;
         }
 
@@ -856,8 +875,7 @@ export async function processTaskIpc(
           '',
         );
         if (schedReqId) {
-          const groupIpcDir = path.join(resolvedIpcBaseDir, sourceGroup);
-          const inputDir = path.join(groupIpcDir, 'input');
+          const inputDir = path.join(resolvedResponseBase, 'input');
           fs.mkdirSync(inputDir, { recursive: true });
           const responseFile = path.join(
             inputDir,
@@ -866,7 +884,11 @@ export async function processTaskIpc(
           const tempFile = `${responseFile}.tmp`;
           fs.writeFileSync(
             tempFile,
-            JSON.stringify({ taskId, status: 'created' }),
+            JSON.stringify({
+              taskId,
+              status: 'created',
+              context_mode: contextMode,
+            }),
           );
           fs.renameSync(tempFile, responseFile);
         }
