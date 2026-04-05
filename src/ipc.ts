@@ -502,14 +502,13 @@ async function processQueueFile(
       case 'refresh_groups':
       case 'register_group':
       case 'debug_query':
-        if (!threadId)
-          await processTaskIpc(
-            data as Parameters<typeof processTaskIpc>[0],
-            sourceGroup,
-            isMain,
-            deps,
-            ipcBaseDir,
-          );
+        await processTaskIpc(
+          data as Parameters<typeof processTaskIpc>[0],
+          sourceGroup,
+          isMain,
+          deps,
+          ipcBaseDir,
+        );
         break;
       case 'vault_prune': {
         const requestId = ((data.requestId as string) || '').replace(
