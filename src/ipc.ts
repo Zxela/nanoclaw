@@ -482,14 +482,14 @@ async function processQueueFile(
       case 'refresh_groups':
       case 'register_group':
       case 'debug_query':
-        if (!threadId)
-          await processTaskIpc(
-            data as Parameters<typeof processTaskIpc>[0],
-            sourceGroup,
-            isMain,
-            deps,
-            ipcBaseDir,
-          );
+        await processTaskIpc(
+          data as Parameters<typeof processTaskIpc>[0],
+          sourceGroup,
+          isMain,
+          deps,
+          ipcBaseDir,
+          threadId,
+        );
         break;
       case 'escalate_to_goal':
         if (deps.onEscalateToGoal && data.groupFolder) {
@@ -817,8 +817,12 @@ export async function processTaskIpc(
   isMain: boolean, // Verified from directory path
   deps: IpcDeps,
   ipcBaseDir?: string,
+  threadId?: string,
 ): Promise<void> {
   const resolvedIpcBaseDir = ipcBaseDir || path.join(DATA_DIR, 'ipc');
+  const groupIpcBase = threadId
+    ? path.join(resolvedIpcBaseDir, sourceGroup, threadId)
+    : path.join(resolvedIpcBaseDir, sourceGroup);
   const registeredGroups = deps.registeredGroups();
 
   switch (data.type) {
@@ -908,8 +912,7 @@ export async function processTaskIpc(
             '',
           );
           if (reqId) {
-            const groupIpcDir = path.join(resolvedIpcBaseDir, sourceGroup);
-            const inputDir = path.join(groupIpcDir, 'input');
+            const inputDir = path.join(groupIpcBase, 'input');
             fs.mkdirSync(inputDir, { recursive: true });
             const responseFile = path.join(
               inputDir,
@@ -958,8 +961,7 @@ export async function processTaskIpc(
           '',
         );
         if (schedReqId) {
-          const groupIpcDir = path.join(resolvedIpcBaseDir, sourceGroup);
-          const inputDir = path.join(groupIpcDir, 'input');
+          const inputDir = path.join(groupIpcBase, 'input');
           fs.mkdirSync(inputDir, { recursive: true });
           const responseFile = path.join(
             inputDir,
