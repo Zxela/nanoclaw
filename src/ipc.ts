@@ -24,6 +24,7 @@ import {
 } from './db.js';
 import { isValidGroupFolder } from './group-folder.js';
 import { logger } from './logger.js';
+import { pruneKnowledgeVault } from './knowledge-vault.js';
 import { appendToolLog, buildToolDetail } from './tool-log.js';
 import { RegisteredGroup } from './types.js';
 
@@ -510,6 +511,29 @@ async function processQueueFile(
             ipcBaseDir,
           );
         break;
+      case 'vault_prune': {
+        const requestId = ((data.requestId as string) || '').replace(
+          /[^a-zA-Z0-9_-]/g,
+          '',
+        );
+        const ttlDays =
+          typeof data.ttlDays === 'number' ? data.ttlDays : undefined;
+        const maxTokens =
+          typeof data.maxTokens === 'number' ? data.maxTokens : undefined;
+        const result = pruneKnowledgeVault(sourceGroup, { ttlDays, maxTokens });
+        if (requestId) {
+          const inputDir = path.join(basePath, 'input');
+          fs.mkdirSync(inputDir, { recursive: true });
+          const responseFile = path.join(
+            inputDir,
+            `vault_prune-${requestId}.json`,
+          );
+          const tempFile = `${responseFile}.tmp`;
+          fs.writeFileSync(tempFile, JSON.stringify(result));
+          fs.renameSync(tempFile, responseFile);
+        }
+        break;
+      }
       case 'escalate_to_goal':
         if (deps.onEscalateToGoal && data.groupFolder) {
           deps.onEscalateToGoal(sourceGroup, threadId || 'default');
