@@ -4,7 +4,6 @@
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-LOG_FILE="${PROJECT_ROOT}/logs/auto-deploy.log"
 LOCK_FILE="/tmp/nanoclaw-deploy.lock"
 BRANCH="main"
 REMOTE="origin"
@@ -22,7 +21,7 @@ if command -v gh &>/dev/null && [ -n "${GH_TOKEN:-}" ]; then
 fi
 
 log() {
-  echo "[$(date -Iseconds)] $*" | tee -a "$LOG_FILE"
+  echo "[$(date -Iseconds)] $*"
 }
 
 cleanup() {
@@ -84,14 +83,11 @@ git pull "$REMOTE" "$BRANCH" --ff-only || {
 
 # Full rebuild
 log "Installing dependencies"
-npm install --prefer-offline 2>&1 | tail -3 | tee -a "$LOG_FILE"
-
+npm install --prefer-offline 2>&1 | tail -3
 log "Building TypeScript"
-npm run build 2>&1 | tail -5 | tee -a "$LOG_FILE"
-
+npm run build 2>&1 | tail -5
 log "Rebuilding container image"
-./container/build.sh 2>&1 | tail -5 | tee -a "$LOG_FILE"
-
+./container/build.sh 2>&1 | tail -5
 # Notify agent via IPC before restart
 # Find all group IPC directories and write a notification to each
 NOTIFICATION=$(cat <<EOF
