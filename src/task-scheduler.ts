@@ -27,6 +27,17 @@ import { RegisteredGroup, ScheduledTask } from './types.js';
 /** Maximum consecutive failures before a task is auto-paused. */
 export const MAX_TASK_RETRIES = 3;
 
+/** Backoff delay for API overload errors (ms). */
+const OVERLOAD_RETRY_BACKOFF_MS = 30 * 60_000; // 30 min
+
+/**
+ * Returns true if the error is a transient API overload (HTTP 529).
+ * These should not count toward the consecutive-failure limit.
+ */
+export function isOverloadError(error: string): boolean {
+  return error.includes('529') || error.includes('overloaded_error');
+}
+
 /** Backoff delays (ms) indexed by failure count (1-based). */
 const RETRY_BACKOFFS_MS = [60_000, 5 * 60_000, 15 * 60_000];
 
@@ -298,16 +309,37 @@ async function runTask(
 
   const durationMs = Date.now() - startTime;
 
+  const overload = error ? isOverloadError(error) : false;
+
   logTaskRun({
     task_id: task.id,
     run_at: new Date().toISOString(),
     duration_ms: durationMs,
-    status: error ? 'error' : 'success',
+    status: error ? (overload ? 'overload' : 'error') : 'success',
     result,
     error,
   });
 
   if (error) {
+    // Transient API overload — retry silently with longer backoff, don't count
+    // toward the consecutive-failure limit so tasks aren't permanently paused
+    // just because the API was under load.
+    if (overload) {
+      const retryNextRun = new Date(
+        Date.now() + OVERLOAD_RETRY_BACKOFF_MS,
+      ).toISOString();
+      logger.info(
+        { taskId: task.id, retryNextRun },
+        'Task hit API overload — retrying in 30 min',
+      );
+      updateTaskAfterRun(
+        task.id,
+        retryNextRun,
+        `Overload (retrying at ${retryNextRun}): ${error}`,
+      );
+      return;
+    }
+
     // Count failures including this one (log was already written above)
     const failures = getConsecutiveFailures(task.id);
 
