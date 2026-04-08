@@ -13,6 +13,7 @@ import { ContainerOutput, runContainerAgent } from './container-runner.js';
 import {
   deleteSession,
   getConsecutiveFailures,
+  getConsecutiveOverloads,
   getDueTasks,
   getTaskById,
   logTaskRun,
@@ -27,15 +28,31 @@ import { RegisteredGroup, ScheduledTask } from './types.js';
 /** Maximum consecutive failures before a task is auto-paused. */
 export const MAX_TASK_RETRIES = 3;
 
-/** Backoff delay for API overload errors (ms). */
-const OVERLOAD_RETRY_BACKOFF_MS = 30 * 60_000; // 30 min
-
 /**
  * Returns true if the error is a transient API overload (HTTP 529).
  * These should not count toward the consecutive-failure limit.
  */
 export function isOverloadError(error: string): boolean {
   return error.includes('529') || error.includes('overloaded_error');
+}
+
+/** Exponential backoff delays for API overload retries (ms): 5m → 15m → 30m → 60m. */
+const OVERLOAD_BACKOFFS_MS = [
+  5 * 60_000,
+  15 * 60_000,
+  30 * 60_000,
+  60 * 60_000,
+];
+
+/** Compute retry time for an overload failure using exponential backoff. */
+export function computeOverloadRetryNextRun(
+  consecutiveOverloads: number,
+): string {
+  const idx = Math.min(
+    consecutiveOverloads - 1,
+    OVERLOAD_BACKOFFS_MS.length - 1,
+  );
+  return new Date(Date.now() + OVERLOAD_BACKOFFS_MS[idx]).toISOString();
 }
 
 /** Backoff delays (ms) indexed by failure count (1-based). */
@@ -325,17 +342,20 @@ async function runTask(
     // toward the consecutive-failure limit so tasks aren't permanently paused
     // just because the API was under load.
     if (overload) {
-      const retryNextRun = new Date(
-        Date.now() + OVERLOAD_RETRY_BACKOFF_MS,
-      ).toISOString();
+      const overloads = getConsecutiveOverloads(task.id);
+      const retryNextRun = computeOverloadRetryNextRun(overloads);
+      const backoffMin =
+        OVERLOAD_BACKOFFS_MS[
+          Math.min(overloads - 1, OVERLOAD_BACKOFFS_MS.length - 1)
+        ] / 60_000;
       logger.info(
-        { taskId: task.id, retryNextRun },
-        'Task hit API overload — retrying in 30 min',
+        { taskId: task.id, overloads, retryNextRun },
+        `Task hit API overload (attempt ${overloads}) — retrying in ${backoffMin} min`,
       );
       updateTaskAfterRun(
         task.id,
         retryNextRun,
-        `Overload (retrying at ${retryNextRun}): ${error}`,
+        `Overload attempt ${overloads} (retrying in ${backoffMin}m): ${error}`,
       );
       return;
     }
