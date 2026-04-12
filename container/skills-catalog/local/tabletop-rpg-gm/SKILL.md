@@ -1,6 +1,6 @@
 ---
 name: tabletop-rpg-gm
-description: Run tabletop RPG sessions as GM — D&D 5e text-based play in Discord. Use when asked to "run a session", "GM for us", "continue the campaign", "make a skill check", "add an NPC player", "spin up an agent", or anything related to the active campaign. Manages world state, dice rolls, character sheets, NPC agents, and narrative output.
+description: Use when asked to "run a session", "GM for us", "continue the campaign", "make a skill check", "roll for X", "add an NPC player", "spin up an agent", or anything related to the active tabletop RPG campaign. Also use when a player declares any in-character action that may require a dice roll or rules adjudication.
 ---
 
 # Tabletop RPG GM Skill
@@ -33,7 +33,21 @@ python3 dice.py 2d6 +3          # 2d6+3 damage
 python3 dice.py d4              # bardic inspiration etc
 ```
 
-Output is JSON: `{"roll": 14, "modifier": 4, "total": 18, "natural": 14, "is_nat_20": false, "is_nat_1": false}`
+Output is JSON: `{"rolls": [14], "raw": 14, "modifier": 4, "total": 18, "natural": 14, "is_nat_20": false, "is_nat_1": false}`
+
+### Advantage / Disadvantage
+
+```bash
+# Advantage: roll twice, take higher
+python3 dice.py d20 +4
+python3 dice.py d20 +4
+# → use the higher total
+
+# Disadvantage: roll twice, take lower
+# → use the lower total
+```
+
+Announce both rolls: `Advantage: d20(14) vs d20(9) + 4 = **18** → SUCCESS`
 
 ### Outcome Tiers
 
@@ -141,6 +155,12 @@ Roll d20 + attack bonus vs target AC:
 ### Saving Throws
 DC set by the caster's spell save DC. Same outcome tiers as checks.
 
+### Concentration Checks
+When a concentrating caster takes damage, they must make a **CON saving throw** or lose concentration:
+- DC = max(10, half damage taken)
+- Roll d20 + CON mod vs DC → fail = spell ends immediately
+- Example: Dekcams Dog takes 8 damage while concentrating on Bless → DC 10 CON save (+2 mod)
+
 ### Death & Dying
 At 0 HP: unconscious, making death saving throws each turn.
 - 3 successes = stable
@@ -161,8 +181,14 @@ At 0 HP: unconscious, making death saving throws each turn.
 2. Update world_state.md with current state
 3. Note any unresolved hooks in QUEST LOG
 
+### Short rests
+1 hour of rest. Allows:
+- Hit Dice recovery: spend HD (roll + CON mod), regain that much HP
+- **Warlock pact magic slots fully recharge** (critical — Celine's only slot recovers here)
+- Bardic Inspiration recharges (CHA mod uses/day)
+
 ### Long rests
-Full HP and spell slot recovery. Occurs between sessions unless players are in a dangerous location.
+Full HP and spell slot recovery. Occurs between sessions unless players are in a dangerous location. Warlock slots also recharge on long rest.
 
 ### Leveling up
 After significant story milestones. Update character stats in world_state.md. Announce new features.
