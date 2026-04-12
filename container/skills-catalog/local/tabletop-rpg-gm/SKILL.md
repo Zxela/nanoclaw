@@ -204,7 +204,10 @@ After significant story milestones. Update character stats in world_state.md. An
 ## File Paths
 
 ```
-/workspace/group/rpg/world_state.md     ← campaign state (read/write every turn)
-/workspace/group/rpg/                   ← scene images, lore files
-/skills-catalog/local/tabletop-rpg-gm/dice.py   ← dice roller
+/workspace/group/rpg/world_state.md                    ← campaign state (read/write every turn)
+/workspace/group/rpg/                                  ← scene images, lore files
+/skills-catalog/local/tabletop-rpg-gm/dice.py          ← dice roller
+/skills-catalog/local/tabletop-rpg-gm/5e-rules.md      ← full rules reference
 ```
+
+**Rules reference covers:** action economy, all conditions, spellcasting rules, concentration, Cleric/Warlock full class features at level 1, grappling, cover, vision, death saves, rests, weapons, armor. Read it when adjudicating anything not covered in this skill.
