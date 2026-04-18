@@ -48,7 +48,7 @@
     {
       "name": "agent-browser",
       "source": "local",
-      "description": "Browse the web for any task — research topics, read articles, interact with web apps, fill forms, take screenshots, extract data, and test web pages. Use whenever a browser would be useful, not just when the user explicitly asks.",
+      "description": "Browse the web for any task \u2014 research topics, read articles, interact with web apps, fill forms, take screenshots, extract data, and test web pages. Use whenever a browser would be useful, not just when the user explicitly asks.",
       "categories": [
         "coding",
         "general"
@@ -94,7 +94,7 @@
     {
       "name": "autoplan",
       "source": "local",
-      "description": "Runs the full review pipeline automatically — office-hours, CEO review, and engineering review — making all architectural decisions autonomously using 6 decision principles, surfacing only genuine taste/judgment calls at the end. Use when asked to \"auto review\", \"autoplan\", \"run all reviews\", \"full review pipeline\", \"review this plan automatically\", or \"make the decisions for me\".",
+      "description": "Runs the full review pipeline automatically \u2014 office-hours, CEO review, and engineering review \u2014 making all architectural decisions autonomously using 6 decision principles, surfacing only genuine taste/judgment calls at the end. Use when asked to \"auto review\", \"autoplan\", \"run all reviews\", \"full review pipeline\", \"review this plan automatically\", or \"make the decisions for me\".",
       "categories": [
         "general"
       ],
@@ -457,7 +457,7 @@
     {
       "name": "docx",
       "source": "local",
-      "description": "\"Create, read, or edit Word documents (.docx). Use for reports, memos, letters, templates, or any .docx task — including extracting content, replacing images, tracked changes, or converting output to Word format.\"",
+      "description": "\"Create, read, or edit Word documents (.docx). Use for reports, memos, letters, templates, or any .docx task \u2014 including extracting content, replacing images, tracked changes, or converting output to Word format.\"",
       "categories": [
         "general",
         "creative"
@@ -631,7 +631,7 @@
     {
       "name": "github-ops",
       "source": "local",
-      "description": "Perform GitHub operations — create repos, open PRs, manage issues, clone, commit, push, review code, fork repos. Use when asked to do anything involving GitHub, git hosting, code review, or repository management.",
+      "description": "Perform GitHub operations \u2014 create repos, open PRs, manage issues, clone, commit, push, review code, fork repos. Use when asked to do anything involving GitHub, git hosting, code review, or repository management.",
       "categories": [
         "coding",
         "general"
@@ -696,7 +696,7 @@
     {
       "name": "linear",
       "source": "local",
-      "description": "Manage Linear issues and projects — create, update, list, and search issues; view team and project status; sync project notes to Linear. Use when asked to manage tasks in Linear, create issues, check project progress, or offload project management to Linear.",
+      "description": "Manage Linear issues and projects \u2014 create, update, list, and search issues; view team and project status; sync project notes to Linear. Use when asked to manage tasks in Linear, create issues, check project progress, or offload project management to Linear.",
       "categories": [
         "general"
       ],
@@ -931,7 +931,7 @@
     {
       "name": "pdf",
       "source": "local",
-      "description": "\"Use for any PDF task — read/extract text or tables, merge, split, rotate, watermark, create, fill forms, encrypt/decrypt, extract images, or OCR scanned PDFs.\"",
+      "description": "\"Use for any PDF task \u2014 read/extract text or tables, merge, split, rotate, watermark, create, fill forms, encrypt/decrypt, extract images, or OCR scanned PDFs.\"",
       "categories": [
         "general",
         "creative"
@@ -959,7 +959,7 @@
     {
       "name": "plan-eng-review",
       "source": "local",
-      "description": "Engineering manager-mode plan review. Locks in the execution plan before coding starts — architecture, data flow, edge cases, test coverage, performance. Use when the user asks to \"review the architecture\", \"engineering review\", \"lock in the plan\", \"eng review\", \"technical review\", or when they have a plan and are about to start coding.",
+      "description": "Engineering manager-mode plan review. Locks in the execution plan before coding starts \u2014 architecture, data flow, edge cases, test coverage, performance. Use when the user asks to \"review the architecture\", \"engineering review\", \"lock in the plan\", \"eng review\", \"technical review\", or when they have a plan and are about to start coding.",
       "categories": [
         "general"
       ],
@@ -977,7 +977,7 @@
     {
       "name": "pptx",
       "source": "local",
-      "description": "\"Create or edit PowerPoint files (.pptx). Trigger on 'slides', 'deck', 'presentation', or any .pptx filename — whether creating, editing, reading, extracting content, or combining/splitting slide files.\"",
+      "description": "\"Create or edit PowerPoint files (.pptx). Trigger on 'slides', 'deck', 'presentation', or any .pptx filename \u2014 whether creating, editing, reading, extracting content, or combining/splitting slide files.\"",
       "categories": [
         "general",
         "creative"
@@ -1314,7 +1314,7 @@
     {
       "name": "visual-explainer",
       "source": "local",
-      "description": "Generate beautiful, self-contained HTML pages that visually explain systems, code changes, plans, and data. Use when the user asks for a diagram, architecture overview, diff review, plan review, project recap, comparison table, or any visual explanation of technical concepts. Also use proactively when you are about to render a complex ASCII table (4+ rows or 3+ columns) — present it as a styled HTML page instead.",
+      "description": "Generate beautiful, self-contained HTML pages that visually explain systems, code changes, plans, and data. Use when the user asks for a diagram, architecture overview, diff review, plan review, project recap, comparison table, or any visual explanation of technical concepts. Also use proactively when you are about to render a complex ASCII table (4+ rows or 3+ columns) \u2014 present it as a styled HTML page instead.",
       "categories": [
         "general"
       ],
@@ -1359,12 +1359,22 @@
     {
       "name": "xlsx",
       "source": "local",
-      "description": "\"Use for any spreadsheet task — open, edit, create, or convert .xlsx/.xlsm/.csv/.tsv files; add columns; compute formulas; chart data; clean messy tabular data. The deliverable must be a spreadsheet file.\"",
+      "description": "\"Use for any spreadsheet task \u2014 open, edit, create, or convert .xlsx/.xlsm/.csv/.tsv files; add columns; compute formulas; chart data; clean messy tabular data. The deliverable must be a spreadsheet file.\"",
       "categories": [
         "general",
         "creative"
       ],
       "path": "/skills-catalog/local/xlsx"
+    },
+    {
+      "name": "tabletop-rpg-gm",
+      "source": "local",
+      "description": "Run tabletop RPG sessions as GM \u2014 D&D 5e text-based play in Discord. Use when asked to run a session, GM for us, continue the campaign, make a skill check, add an NPC player, spin up an agent, or anything related to the active campaign.",
+      "categories": [
+        "general",
+        "creative"
+      ],
+      "path": "/skills-catalog/local/tabletop-rpg-gm"
     }
   ]
 }
