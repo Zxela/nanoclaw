@@ -838,6 +838,28 @@ export function getConsecutiveFailures(taskId: string): number {
 }
 
 /**
+ * Count consecutive overload runs for a task by scanning recent run logs
+ * from newest to oldest, stopping at the first non-overload entry.
+ */
+export function getConsecutiveOverloads(taskId: string): number {
+  const rows = db
+    .prepare(
+      `SELECT status FROM task_run_logs WHERE task_id = ? ORDER BY run_at DESC LIMIT 10`,
+    )
+    .all(taskId) as { status: string }[];
+
+  let count = 0;
+  for (const row of rows) {
+    if (row.status === 'overload') {
+      count++;
+    } else {
+      break;
+    }
+  }
+  return count;
+}
+
+/**
  * Get run counts for a set of task IDs in a single query.
  * Returns a map of taskId → run count.
  */
